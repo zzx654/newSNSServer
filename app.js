@@ -17,6 +17,7 @@ app.use(express.static('files'))
 
 const fromEmail = 'mhyhl220@gmail.com'
 const nodemailer = require("nodemailer");
+const { PricingV1VoiceVoiceCountryInstanceInboundCallPrices } = require('twilio/lib/rest/pricing/v1/voice/country');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -234,6 +235,149 @@ function getCode() {
 app.use(express.urlencoded({extended: true}));
 app.use(express.json())
 
+const find_userid = async(conn,platform,account) => {
+  try {
+    const[rows] = await conn.execute('select *from user where platform=? and account=?',[platform,account])
+    return rows
+
+  }catch(err){
+    throw err;
+  }
+}
+const insert_tag = async(conn,tags) => {
+  try {
+
+
+    for(var i=0; i<tags.length;i++)
+    {
+     
+        await conn.execute('insert into tag (tagname) select ? from dual where not exists (select * from tag where tagname=?)',[tags[i],tags[i]])
+      }
+  
+      const[rows] = await conn.query('select tagid from tag where tagname in (?)',[tags])
+      console.log(rows)
+      return rows
+      //await conn.execute('insert ignore into tag (tagname) values (?)',[tagarr])
+
+    //const[rows] = await conn.execute('insert ignore into tag (tagname) values ?',[tagarr])
+    //return rows
+  }catch(err) {
+    console.log(err)
+    throw err;
+  }
+}
+const insert_post = async(conn,anonymousNick,userid,text,lat,long) => {
+  try {
+    const[rows] = await conn.execute('insert into post(userid,anonymous,text,latitude,longitude) value(?,?,?,?,?)',[userid,anonymousNick,text,lat,long])
+      return rows
+  }catch(err) {
+    console.log(err)
+  throw err;
+  }
+}
+const insert_posttag = async(conn,postid,tagids) =>{
+  try {
+
+    for(var i=0;i<tagids.length;i++) {
+      await conn.execute('insert into posttag(postid,tagid) value (?,?)',[postid,tagids[i]])
+    }
+  
+  }catch(err) {
+    console.log(err)
+    throw err;
+  }
+}
+const insert_image = async(conn,postid,images) =>{
+  try {
+    for(var i=0;i<images.length;i++) {
+      await conn.execute('insert into imagefile(postid,filename) value (?,?)',[postid,images[i]])
+    }
+  }catch(err) {
+    console.log(err)
+    throw err;
+  }
+}
+const uploadPost = (anonymousNick,platform,account,tags,text,images,lat,long) => {
+  return async(conn) => {
+    try {
+  
+      const user = await find_userid(conn,platform,account)
+      const userid = user[0].userid
+      const insertpostresult = await insert_post(conn,anonymousNick,userid,text,lat,long)
+    
+      if(tags.length!=0) {
+        const tagresult = await insert_tag(conn,tags)
+   
+        var tagids=new Array()
+        for(var i=0;i<tagresult.length;i++)
+          {
+        
+            tagids[i] = tagresult[i].tagid
+          }
+  
+          insert_posttag(conn,insertpostresult.insertId,tagids)
+    
+      }
+      if(images.length!=0) {
+        
+        insert_image(conn,insertpostresult.insertId,images)
+
+      }
+      
+
+    } catch(err) {
+      throw err
+    }
+  }
+
+}
+async function runUploadPost(anonymousNick,platform,account,tags,text,images,lat,long) {
+  const result = await transaction(uploadPost(anonymousNick,platform,account,tags,text,images,lat,long))
+  console.log(result)
+
+}
+app.post('/uploadPost',fileUpload.array('image'),accessToken,(req,res) => {
+  
+  //태그,텍스트,이미지,위치
+  //1.태그 배열 삽입후 tagid가져와야 -> 태그 중복무시하고 삽입, 태그 select해서 tagid 가져와놓기
+  //2.post에 글 삽입후에 pk가져오기
+  //3.2에서 가져온 pk를 가지고 post tag 테이블에 해시태그들 추가
+  var text=req.body.text
+  var lat = req.body.latitude||null
+  var long = req.body.longitude||null
+  var anonymousNick = 'NONE'
+  if(req.body.anonymousNick!==undefined){
+    anonymousNick = req.body.anonymousNick
+  }
+  var tags=new Array()
+  var images=new Array()
+  if(req.body.tags!==undefined)
+    tags= req.body.tags.split('#')
+  for(var i=0;i<res.req.files.length;i++)
+    {
+      images[i]=req.files[i].filename
+      console.log(req.files[i].filename)
+    }
+    console.log(images)
+    console.log(tags)
+
+
+  verifyToken(req.token,function(){
+    //인증실패 다시 로그인 화면으로 돌아감
+    res.json({
+      isTokenValid:false,
+      resultCode:400
+    })
+  },
+  function(platform,account) {
+    console.log('gg')
+
+    runUploadPost(anonymousNick,platform,account,tags,text,images,lat,long)
+
+  
+
+  })
+})
  app.post('/createProfile',fileUpload.single('image'),accessToken, (req, res) => {
   console.log(req.body.nickname)
   console.log(req.body.birth)
@@ -429,7 +573,7 @@ app.post('/emailSignIn',(req,res)=>{
           if(pwresult) { //비밀번호 맞음(로그인성공)
             jwt.sign({user:user},'secretkey',{expiresIn:'20d'},(err,authtoken)=>{ //jwt 발급
               if(err) {
-                console.log('3')
+        
                 res.json({
                   isMember:true,
                   profileWritten:false,
@@ -633,6 +777,24 @@ app.post('/authenticateCode',(req,res)=>{
         })
     }
 })
+app.post('/searchTag',(req,res)=>{
+  var tag = req.body.tag
+  console.log(tag)
+  tag="%"+tag+"%"
+  var param = [tag]
+  var searchTag='select tagname,count from (select *from tag where tagname like ?) as tag left join (select tagid, count(tagid) as count from posttag group by tagid) as tagcount on tag.tagid = tagcount.tagid'
+  sqlquery(searchTag,param,function(result){
+    res.json({
+      resultCode:200,
+      tags:result
+  })
+  },function(){
+    res.json({
+      resultCode:500,
+      tags:[]
+  })
+  })
+})
 app.post('/checkNickname',(req,res)=>{
   var nickname=req.body.nickname
   var checknick='select *from user where nickname=?'
@@ -653,7 +815,7 @@ app.post('/checkNickname',(req,res)=>{
       }
   },function() {
     res.json({
-      resultCode:200,
+      resultCode:500,
       isValid:false
   })
   })
