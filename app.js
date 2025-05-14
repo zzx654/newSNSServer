@@ -134,6 +134,9 @@ const transaction = async (logic) => {
       const result = await logic(conn);
 
       await conn.commit();
+      console.log('trasaction result')
+      console.log(result)
+
       return result;
   } catch (err) {
       if (conn) {
@@ -268,7 +271,9 @@ const insert_tag = async(conn,tags) => {
 }
 const insert_post = async(conn,anonymousNick,userid,text,lat,long) => {
   try {
-    const[rows] = await conn.execute('insert into post(userid,anonymous,text,latitude,longitude) value(?,?,?,?,?)',[userid,anonymousNick,text,lat,long])
+    var anonymous = anonymousNick || null
+
+    const[rows] = await conn.execute('insert into post(userid,anonymous,text,latitude,longitude) value(?,?,?,?,?)',[userid,anonymous,text,lat,long])
       return rows
   }catch(err) {
     console.log(err)
@@ -297,6 +302,7 @@ const insert_image = async(conn,postid,images) =>{
     throw err;
   }
 }
+
 const uploadPost = (anonymousNick,platform,account,tags,text,images,lat,long) => {
   return async(conn) => {
     try {
@@ -331,11 +337,124 @@ const uploadPost = (anonymousNick,platform,account,tags,text,images,lat,long) =>
   }
 
 }
+const get_rows = async(conn,query,param) => {
+  try {
+    const[rows] = await conn.execute(query,param)
+    return rows;
+  } catch(err) {
+    console.log(err)
+    throw err;
+  }
+  
+
+}
+const getNearPosts = (query,platform,account,latitude,longitude,distancemax,lastpostid,lastpostdate) => {
+  return async(conn) => {
+    try {
+  
+      const user = await find_userid(conn,platform,account)
+      const userid = user[0].userid
+      var param=[latitude,longitude,latitude,userid,distancemax]
+      if(lastpostid!=undefined) {
+        param = [latitude,longitude,latitude,userid,lastpostdate,lastpostdate,lastpostid,distancemax]
+      }
+      const getPostsResult = await get_rows(conn,query,param)
+    return getPostsResult
+    
+    
+    } catch(err) {
+      throw err
+    }
+  }
+
+}
 async function runUploadPost(anonymousNick,platform,account,tags,text,images,lat,long) {
   const result = await transaction(uploadPost(anonymousNick,platform,account,tags,text,images,lat,long))
   console.log(result)
 
 }
+async function runGetNearPosts(query,platform,account,latitude,longitude,distancemax,lastpostid,lastpostdate,success,error){
+  try {
+    const result = await transaction(getNearPosts(query,platform,account,latitude,longitude,distancemax,lastpostid,lastpostdate))
+    if(result !== null)
+     success(result)
+  } catch(err) {
+    console.log(err)
+    error()
+    throw err
+  }
+}
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+app.post('/getNearPosts',accessToken,(req,res)=> {
+    var postid=req.body.postid
+    var postdate=req.body.postdate
+    var distancemax=req.body.distancemax
+    var latitude=req.body.latitude
+    var longitude=req.body.longitude
+
+    console.log('sdf')
+    console.log(postid)
+    verifyToken(req.token,function(){
+      //인증실패 다시 로그인 화면으로 돌아감
+      res.json({
+        posts:[],
+        resultCode:400
+      })
+    },
+    function(platform,account) {
+      var param=[latitude,longitude,latitude,distancemax]
+      var getNearPostQuery = "select post.postid,mylike.isliked,vote.vote,votecount.votecount,post.postid,post.userid,getuser.nickname,getuser.profileimage,getuser.gender,post.anonymous,post.text,tag.tags,post.date,image.images,"
+                    +"audio.audio,ifnull(com.commentcount,0) as commentcount,ifnull(lik.likecount,0) as likecount,(6371*acos(cos(radians(?))*cos(radians(post.latitude))*cos"+
+                    "(radians(post.longitude)-radians(?))+sin(radians(?))*sin(radians(post.latitude)))) as distance from post left outer"
+                    +" join (select postid,count(*) as commentcount from comment group by postid) com on post.postid=com.postid left outer"+
+                    " join (select postid,count(*) as likecount from likepost group by postid) lik on post.postid=lik.postid"+
+                    " left outer join (select postid,group_concat(tagname separator '#') as tags from(select postid,tagname from posttag left join tag on posttag.tagid=tag.tagid)tag group by postid) tag on post.postid=tag.postid"+
+                    " left outer join (select userid as id,nickname,profileimage,gender from user) getuser on post.userid=getuser.id"+
+                    " left join (select postid,title as vote from vote) vote on post.postid=vote.postid"+
+                    " left join (select postid,userid as isliked from likepost where userid=?)mylike on post.postid=mylike.postid"+
+" left join (select postid,group_concat(filename separator ',') as images from imagefile group by postid)image on post.postid=image.postid"+
+" left join (select postid,filename as audio from audiofile)audio on post.postid=audio.postid"+
+" left join (select postid,count(*) as votecount from voteresult group by postid)votecount on post.postid=votecount.postid"+
+                    " where latitude is not null having distance<=? order by date desc,postid desc limit 20"
+
+                    if(postid!= undefined) {
+                      getNearPostQuery = "select post.postid,mylike.isliked,vote.vote,votecount.votecount,post.postid,post.userid,getuser.nickname,getuser.profileimage,getuser.gender,post.anonymous,post.text,tag.tags,post.date,image.images,"
+                    +"audio.audio,ifnull(com.commentcount,0) as commentcount,ifnull(lik.likecount,0) as likecount,(6371*acos(cos(radians(?))*cos(radians(post.latitude))*cos"+
+                    "(radians(post.longitude)-radians(?))+sin(radians(?))*sin(radians(post.latitude)))) as distance from post left outer"
+                    +" join (select postid,count(*) as commentcount from comment group by postid) com on post.postid=com.postid left outer"+
+                    " join (select postid,count(*) as likecount from likepost group by postid) lik on post.postid=lik.postid"+
+                    " left outer join (select postid,group_concat(tagname separator '#') as tags from(select postid,tagname from posttag left join tag on posttag.tagid=tag.tagid)tag group by postid) tag on post.postid=tag.postid"+
+                    " left outer join (select userid as id,nickname,profileimage,gender from user) getuser on post.userid=getuser.id"+
+                    " left join (select postid,title as vote from vote) vote on post.postid=vote.postid"+
+                    " left join (select postid,userid as isliked from likepost where userid=?)mylike on post.postid=mylike.postid"+
+" left join (select postid,group_concat(filename separator ',') as images from imagefile group by postid)image on post.postid=image.postid"+
+" left join (select postid,filename as audio from audiofile)audio on post.postid=audio.postid"+
+" left join (select postid,count(*) as votecount from voteresult group by postid)votecount on post.postid=votecount.postid"+
+                    " where latitude is not null and (date<? or (date=? and post.postid<?)) having distance<=? order by date desc,postid desc limit 20"
+
+                    }
+            
+                    runGetNearPosts(getNearPostQuery,platform,account,latitude,longitude,distancemax,postid,postdate,function(result){
+                      sleep(800).then(() =>
+                      res.json({
+                        posts:result,
+                        isTokenValid:true,
+                        resultCode:200
+                      }))
+                    },function(){
+                      res.json({
+                        posts:[],
+                        isTokenValid:true,
+                        resultCode:400
+                      })
+                    })
+        
+                  
+    })
+
+})
 app.post('/uploadPost',fileUpload.array('image'),accessToken,(req,res) => {
   
   //태그,텍스트,이미지,위치
@@ -345,17 +464,15 @@ app.post('/uploadPost',fileUpload.array('image'),accessToken,(req,res) => {
   var text=req.body.text
   var lat = req.body.latitude||null
   var long = req.body.longitude||null
-  var anonymousNick = 'NONE'
-  if(req.body.anonymousNick!==undefined){
-    anonymousNick = req.body.anonymousNick
-  }
+  
   var tags=new Array()
   var images=new Array()
   if(req.body.tags!==undefined)
     tags= req.body.tags.split('#')
   for(var i=0;i<res.req.files.length;i++)
     {
-      images[i]=req.files[i].filename
+      
+      images[i]='/image?filename='+req.files[i].filename
       console.log(req.files[i].filename)
     }
     console.log(images)
@@ -372,7 +489,7 @@ app.post('/uploadPost',fileUpload.array('image'),accessToken,(req,res) => {
   function(platform,account) {
     console.log('gg')
 
-    runUploadPost(anonymousNick,platform,account,tags,text,images,lat,long)
+    runUploadPost(req.body.anonymousNick,platform,account,tags,text,images,lat,long)
 
   
 
@@ -784,6 +901,8 @@ app.post('/searchTag',(req,res)=>{
   var param = [tag]
   var searchTag='select tagname,count from (select *from tag where tagname like ?) as tag left join (select tagid, count(tagid) as count from posttag group by tagid) as tagcount on tag.tagid = tagcount.tagid'
   sqlquery(searchTag,param,function(result){
+    console.log('2자진')
+    console.log(result)
     res.json({
       resultCode:200,
       tags:result
