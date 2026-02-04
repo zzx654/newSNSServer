@@ -19,3 +19,6 @@ yarn-error.log*
 
 # production
 /build
+
+# Firebase 서비스 계정 키
+snsapp-3c124-firebase-adminsdk-fbsvc-52de3afc1a.json
