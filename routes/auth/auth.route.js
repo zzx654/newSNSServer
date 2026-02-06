@@ -9,6 +9,10 @@ const {
 } = require('../../middlewares/auth.middleware')
 
 router.post('/signInWithToken', accessToken, verifyToken,authController.autoLogin)
+router.post(
+  '/requestPhoneAuthCode',
+  authController.requestPhoneAuthCode
+)
 router.get('/ping', (req, res) => {
   res.json({ pong: true })
 })
