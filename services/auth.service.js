@@ -74,4 +74,26 @@ const requestPhoneAuthCode = async (phoneNumber) => {
   }
 }
 
-module.exports = { autoLogin,requestPhoneAuthCode }
+const authenticateCode = async (phoneNumber, authCode) => {
+  const cachedCode = cache.get(phoneNumber)
+
+  if (!cachedCode) {
+    return {
+      resultCode: 200,
+      data: { isCorrect: false }
+    }
+  }
+
+  const isCorrect = String(authCode) === String(cachedCode)
+
+  if (isCorrect) {
+    cache.del(phoneNumber)
+  }
+
+  return {
+    resultCode: 200,
+    data: { isCorrect }
+  }
+}
+
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode }

@@ -43,5 +43,22 @@ const requestPhoneAuthCode = async (req, res) => {
     })
   }
 }
+const authenticateCode = async (req, res) => {
+  try {
+    const { phoneNumber, authCode } = req.body
 
-module.exports = { autoLogin, requestPhoneAuthCode }
+    const result = await authService.authenticateCode(
+      phoneNumber,
+      authCode)
+
+    return res.json(result)
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({
+      resultCode: 500,
+      data: { isCorrect: false }
+    })
+  }
+}
+
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode }
