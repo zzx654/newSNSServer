@@ -10,7 +10,7 @@ const sendAuthCode = async (to, code) => {
   return messageService.sendOne({
     to,
     from: process.env.SMS_FROM,
-    text: SMS_TEMPLATES.AUTH_CODE(code)
+    text: `[고민앱] 인증번호 [${code}]를 입력해주세요.`
   })
 }
 

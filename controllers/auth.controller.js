@@ -43,6 +43,20 @@ const requestPhoneAuthCode = async (req, res) => {
     })
   }
 }
+const requestEmailAuthCode = async(req, res) => {
+  try {
+    const { email } = req.body
+    const result = await authService.requestEmailAuthCode(email)
+    res.json(result)
+
+  } catch(err) {
+     console.error(err)
+     res.status(500).json({
+      resultCode: 500,
+      data: { isValid: false }
+    })
+  }
+}
 const authenticateCode = async (req, res) => {
   try {
     const { phoneNumber, authCode } = req.body
@@ -61,4 +75,4 @@ const authenticateCode = async (req, res) => {
   }
 }
 
-module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode }
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode }

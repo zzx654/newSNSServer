@@ -13,6 +13,8 @@ router.post(
   '/requestPhoneAuthCode',
   authController.requestPhoneAuthCode
 )
+router.post('/requestEmailAuthCode',authController.requestEmailAuthCode)
+
 router.post('/authenticateCode',authController.authenticateCode)
 
 router.get('/ping', (req, res) => {

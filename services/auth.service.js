@@ -1,7 +1,9 @@
 const { pool } = require('../config/db')
 const { generateCode } = require('../utils/randomcode')
+const mail = require('../utils/mail')
 const sms = require('../utils/sms')
 const cache = require('../utils/cache')
+const { request } = require('express')
 
 const autoLogin = async ({ userId }) => {
   if (!userId) {
@@ -61,9 +63,11 @@ const requestPhoneAuthCode = async (phoneNumber) => {
 
   // 2. 인증코드 생성
   const code = generateCode()
+  cache.del(phoneNumber)
 
   // 3. 캐시에 저장 (TTL 3~5분)
   cache.set(phoneNumber, code, 180)
+  
 
   // 4. 문자 전송
   await sms.sendAuthCode(phoneNumber, code)
@@ -95,5 +99,38 @@ const authenticateCode = async (phoneNumber, authCode) => {
     data: { isCorrect }
   }
 }
+const requestEmailAuthCode = async({email}) => {
+    const [rows] = await pool.query(
+    'SELECT * FROM user WHERE account = ?',
+    [email]
+  )
 
-module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode }
+  if (rows.length) {
+    return {
+      resultCode: 200,
+      data: { isValid: false }
+    }
+  }
+
+    // 2. 인증코드 생성
+  const code = generateCode()
+
+  // 3. 캐시에 저장 (TTL 3~5분)
+  cache.set(email, code, 180)
+  try {
+    await mail.sendEmail(
+      email,
+      '[고민앱] 메일 인증 코드 발송',
+      '인증번호는 '+code+' 입니다'
+    )
+  } catch(err) {
+    throw new Error('EMAIL_SEND_FAILED')
+  }
+
+    return {
+    resultCode: 200,
+    data: { isValid: true }
+  }
+}
+
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode }
