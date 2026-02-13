@@ -17,6 +17,8 @@ router.post('/requestEmailAuthCode',authController.requestEmailAuthCode)
 
 router.post('/authenticateCode',authController.authenticateCode)
 
+router.post('/emailSignUp',authController.emailSignUp)
+
 router.get('/ping', (req, res) => {
   res.json({ pong: true })
 })

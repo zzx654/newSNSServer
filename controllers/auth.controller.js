@@ -1,5 +1,4 @@
 const authService = require('../services/auth.service')
-
 const autoLogin = async (req, res) => {
   if (!req.isTokenValid) {
     return res.json({
@@ -75,4 +74,45 @@ const authenticateCode = async (req, res) => {
   }
 }
 
-module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode }
+const emailSignUp = async (req, res) => {
+  try {
+    const { account, password, phonenumber, authCode } = req.body
+
+    const result = await authService.emailSignUp({
+      account,
+      password,
+      phonenumber,
+      authCode
+    })
+
+    return res.json(result)
+
+  } catch (err) {
+    console.error(err)
+
+    return res.status(500).json({
+      resultCode: 500,
+      data: { isCorrect: false }
+    })
+  }
+}
+const socialSign = async(req, res) => {
+  try {
+    const { platform, account, fcmtoken } = req.body
+
+    const result = await authService.socialSign(platform,account,fcmtoken)
+
+    return res.json(result)
+
+  } catch (err) {
+    console.error(err)
+
+    return res.status(500).json({
+      resultCode: 500,
+      data: { isCorrect: false }
+    })
+  }
+
+}
+
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp, socialSign }

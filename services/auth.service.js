@@ -2,8 +2,11 @@ const { pool } = require('../config/db')
 const { generateCode } = require('../utils/randomcode')
 const mail = require('../utils/mail')
 const sms = require('../utils/sms')
+const { signAccessToken } = require('../utils/jwt')
 const cache = require('../utils/cache')
+const bcrypt = require('../utils/bcrypt')
 const { request } = require('express')
+const { transaction } = require('../utils/transaction')
 
 const autoLogin = async ({ userId }) => {
   if (!userId) {
@@ -133,4 +136,105 @@ const requestEmailAuthCode = async({email}) => {
   }
 }
 
-module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode }
+const emailSignUp = async ({ account, password, phonenumber, authCode }) => {
+
+  //  인증코드 확인
+  const cachedCode = cache.get(account)
+
+  if (!cachedCode) {
+    return {
+      resultCode: 200,
+      data: { isCorrect: false, message: 'AUTH_CODE_EXPIRED' }
+    }
+  }
+
+  if (String(authCode) !== String(cachedCode)) {
+    return {
+      resultCode: 200,
+      data: { isCorrect: false, message: 'AUTH_CODE_INVALID' }
+    }
+  }
+
+  //  비밀번호 해싱
+  const encrypted = await bcrypt.hash(password)
+
+
+  try {
+      const result = await transaction(async (conn) => {
+        const [insertResult] = await conn.query(
+          `INSERT INTO user 
+          (platform, account, password, phonenumber) 
+          VALUES (?, ?, ?, ?)`,
+          ['email', account, encrypted, phonenumber]
+        )
+        return insertResult
+      })
+       //  성공하면 인증코드 삭제
+     cache.del(account)
+       return {
+        resultCode: 200,
+        data: {
+          isCorrect: true
+        }
+      }
+    } catch(err) {
+      throw(err)
+    }
+}
+const socialSign = async(platform,account,fcmtoken) => {
+ const result = await transaction(async (conn) => {
+
+  const [users] = await conn.query(
+    'SELECT * FROM user WHERE platform = ? AND account = ?',
+    [platform, account]
+  )
+
+  if (!users.length) {
+    return {
+      isMember: false,
+      user: null
+    }
+  }
+
+  const user = users[0]
+
+  await conn.query(
+    'UPDATE user SET fcmtoken=? WHERE userid=?',
+    [fcmtoken, user.userid]
+  )
+
+  return {
+    isMember: true,
+    user
+  }
+})
+
+if (!result.isMember) {
+  return {
+    resultCode: 200,
+    data: {
+      isMember: false,
+      profileWritten: false,
+      token: '',
+      userId: 0
+    }
+  }
+}
+
+const authtoken = signAccessToken({
+  userId: result.user.userid,
+  platform: result.user.platform,
+  account: result.user.account
+})
+return {
+    resultCode: 200,
+    data: {
+      isMember: true,
+      profileWritten: result.user.nickname !== null,
+      token: authtoken,
+      userId: result.user.userid
+    }
+  }
+}
+
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp, socialSign }

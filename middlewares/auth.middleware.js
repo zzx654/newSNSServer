@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken')
+const { verifyAccessToken } = require('../utils/jwt')
 
 function accessToken(req, res, next) {
   const authHeader = req.headers.authorization
@@ -17,12 +17,12 @@ function accessToken(req, res, next) {
 
 function verifyToken(req, res, next) {
   try {
-    const decoded = jwt.verify(req.token, process.env.JWT_SECRET)
+    const decoded = verifyAccessToken(req.token)
 
     req.user = {
       userId: decoded.userId || null,
-      platform: decoded.platform || decoded.user?.platform || null,
-      account: decoded.account || decoded.user?.account || null,
+      platform: decoded.platform || null,
+      account: decoded.account || null,
     }
 
     req.isTokenValid = true
