@@ -236,5 +236,29 @@ return {
     }
   }
 }
+const socialSignUp = async(platform,account,phonenumber,fcmtoken) => {
+   const userId = await transaction(async (conn) => {
 
-module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp, socialSign }
+    const [insertResult] = await conn.query(
+      `INSERT INTO user 
+       (platform, account, phonenumber, fcmtoken) 
+       VALUES (?, ?, ?, ?)`,
+      [platform, account, phonenumber, fcmtoken]
+    )
+
+    return insertResult.insertId   
+  })
+   const authtoken = signAccessToken({
+    userId:userId,
+    platform:platform,
+    account:account
+  })
+  return {
+    resultCode: 200,
+    data: {
+      token: authtoken
+    }
+  }
+}
+
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp, socialSign, socialSignUp }
