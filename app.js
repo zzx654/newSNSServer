@@ -6,6 +6,7 @@ const server = http.createServer(app)
 const authRoutes = require('./routes/auth/auth.route')
 const fcmRoutes = require('./routes/fcm/fcm.route')
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 app.use('/auth', authRoutes)
 app.use('/fcm', fcmRoutes)
 var port = process.env.PORT || 3000

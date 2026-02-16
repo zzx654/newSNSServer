@@ -100,6 +100,9 @@ const socialSign = async(req, res) => {
   try {
     const { platform, account, fcmtoken } = req.body
 
+    console.log(req.body)
+
+
     const result = await authService.socialSign(platform,account,fcmtoken)
 
     return res.json(result)
@@ -135,5 +138,27 @@ const socialSignUp = async(req, res) => {
   }
 
 }
+const emailSignIn = async(req,res) => {
+   try {
+    const { account, password,fcmtoken } = req.body
 
-module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp, socialSign, socialSignUp }
+    const result = await authService.emailSignIn(account,password,fcmtoken)
+
+    return res.json(result)
+
+  } catch (err) {
+    console.error(err)
+
+    return res.status(500).json({
+        resultCode: 500,
+      data: {
+        isMember: false,
+        profileWritten: false,
+        userId: 0,
+        token: ''
+      }
+    })
+  }
+}
+
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp, socialSign, socialSignUp, emailSignIn }

@@ -102,7 +102,7 @@ const authenticateCode = async (phoneNumber, authCode) => {
     data: { isCorrect }
   }
 }
-const requestEmailAuthCode = async({email}) => {
+const requestEmailAuthCode = async(email) => {
     const [rows] = await pool.query(
     'SELECT * FROM user WHERE account = ?',
     [email]
@@ -127,6 +127,7 @@ const requestEmailAuthCode = async({email}) => {
       '인증번호는 '+code+' 입니다'
     )
   } catch(err) {
+    console.log(err)
     throw new Error('EMAIL_SEND_FAILED')
   }
 
@@ -180,6 +181,66 @@ const emailSignUp = async ({ account, password, phonenumber, authCode }) => {
     } catch(err) {
       throw(err)
     }
+}
+const emailSignIn = async (account, password, fcmtoken) => {
+
+  const result = await transaction(async (conn) => {
+
+    const [users] = await conn.query(
+      'SELECT * FROM user WHERE platform=? AND account=?',
+      ['email', account]
+    )
+
+    if (!users.length) {
+      return { isMember: false }
+    }
+
+    const user = users[0]
+
+    const compareResult = await bcrypt.compare(password, user.password)
+
+    if (!compareResult) {
+      return { isMember: false }
+    }
+
+    await conn.query(
+      'UPDATE user SET fcmtoken=? WHERE userid=?',
+      [fcmtoken, user.userid]
+    )
+
+    return {
+      isMember: true,
+      user
+    }
+  })
+
+  if (!result.isMember) {
+    return {
+      resultCode: 200,
+      data: {
+        isMember: false,
+        profileWritten: false,
+        userId: 0,
+        token: ''
+      }
+    }
+  }
+
+  const authtoken = signAccessToken({
+    userId: result.user.userid,
+    platform: result.user.platform,
+    account: result.user.account
+  })
+
+  return {
+    resultCode: 200,
+    data: {
+      isMember: true,
+      profileWritten: result.user.nickname !== null,
+      userId: result.user.userid,
+      token: authtoken
+    }
+  }
 }
 const socialSign = async(platform,account,fcmtoken) => {
  const result = await transaction(async (conn) => {
@@ -261,4 +322,7 @@ const socialSignUp = async(platform,account,phonenumber,fcmtoken) => {
   }
 }
 
-module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp, socialSign, socialSignUp }
+module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp,
+   socialSign, socialSignUp,
+  emailSignIn
+ }

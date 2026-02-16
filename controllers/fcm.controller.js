@@ -12,6 +12,8 @@ const updateFcmToken = async (req, res) => {
     const { userId } = req.user
     const { fcmtoken } = req.body
 
+
+
     await fcmService.updateFcmToken(userId, fcmtoken)
 
     return res.json({
