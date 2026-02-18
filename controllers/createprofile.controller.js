@@ -1,6 +1,6 @@
 
 const createProfileService = require('../services/createprofile.service')
-
+const asyncHandler = require('../utils/asynchandler')
 const checkNickname = async(req,res) => {
     try {
         const {nickname} = req.body

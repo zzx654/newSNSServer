@@ -6,11 +6,13 @@ const server = http.createServer(app)
 const authRoutes = require('./routes/auth/auth.route')
 const fcmRoutes = require('./routes/fcm/fcm.route')
 const createProfileRoutes = require('./routes/createprofile/createprofile.route')
+const errorMiddleware = require('./middlewares/errormiddleware')
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use('/auth', authRoutes)
 app.use('/fcm', fcmRoutes)
 app.use('/createprofile',createProfileRoutes)
+app.use(errorMiddleware)
 var port = process.env.PORT || 3000
 server.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`)

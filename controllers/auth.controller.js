@@ -1,164 +1,67 @@
 const authService = require('../services/auth.service')
-const autoLogin = async (req, res) => {
-  if (!req.isTokenValid) {
-    return res.json({
-      resultCode: 200,
-      isTokenValid: false,
-      data: {
-        signInResult: false,
-        profileWritten: false,
-        userId: 0,
-      },
-    })
-  }
-
-  try {
-    const result = await authService.autoLogin(req.user)
+const asyncHandler = require('../utils/asynchandler')
+const autoLogin = asyncHandler(async (req, res) => {
+   const {userId} = req.body
+    const result = await authService.autoLogin(userId)
     return res.json(result)
-  } catch (err) {
-    console.error(err)
-    return res.status(500).json({
-      resultCode: 500,
-      isTokenValid: true,
-      data: {
-        signInResult: false,
-        profileWritten: false,
-        userId: 0,
-      },
-    })
-  }
-}
 
-const requestPhoneAuthCode = async (req, res) => {
-  try {
-    const { phoneNumber } = req.body
+})
+
+const requestPhoneAuthCode = asyncHandler (async(req, res) => {
+  
+  const {phoneNumber} = req.body
     const result = await authService.requestPhoneAuthCode(phoneNumber)
     res.json(result)
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({
-      resultCode: 500,
-      data: { isValid: false }
-    })
-  }
-}
-const requestEmailAuthCode = async(req, res) => {
-  try {
-    const { email } = req.body
-    const result = await authService.requestEmailAuthCode(email)
+ 
+})
+const requestEmailAuthCode = asyncHandler(async(req, res) => {
+
+    const result = await authService.requestEmailAuthCode(req.body)
     res.json(result)
+})
+const authenticateCode = asyncHandler(async (req, res) => {
 
-  } catch(err) {
-     console.error(err)
-     res.status(500).json({
-      resultCode: 500,
-      data: { isValid: false }
-    })
-  }
-}
-const authenticateCode = async (req, res) => {
-  try {
-    const { phoneNumber, authCode } = req.body
-
-    const result = await authService.authenticateCode(
-      phoneNumber,
-      authCode)
+ const {phoneNumber, authCode} = req.body
+    const result = await authService.authenticateCode(phoneNumber,authCode)
 
     return res.json(result)
-  } catch (err) {
-    console.error(err)
-    return res.status(500).json({
-      resultCode: 500,
-      data: { isCorrect: false }
-    })
-  }
-}
+  
+})
 
-const emailSignUp = async (req, res) => {
-  try {
-    const { account, password, phonenumber, authCode } = req.body
-
-    const result = await authService.emailSignUp({
-      account,
-      password,
-      phonenumber,
-      authCode
-    })
+const emailSignUp = asyncHandler(async (req, res) => {
+ 
+ const { account, password, phonenumber, authCode } = req.body
+    const result = await authService.emailSignUp(account,password,phonenumber,authCode)
 
     return res.json(result)
 
-  } catch (err) {
-    console.error(err)
+  
+})
+const socialSign = asyncHandler(async(req, res) => {
 
-    return res.status(500).json({
-      resultCode: 500,
-      data: { isCorrect: false }
-    })
-  }
-}
-const socialSign = async(req, res) => {
-  try {
-    const { platform, account, fcmtoken } = req.body
-
-    console.log(req.body)
-
-
+ const {platform,account,fcmtoken} = req.body
     const result = await authService.socialSign(platform,account,fcmtoken)
-
     return res.json(result)
+})
 
-  } catch (err) {
-    console.error(err)
+const socialSignUp = asyncHandler(async(req, res) => {
 
-    return res.status(500).json({
-      resultCode: 500,
-      data: { isCorrect: false }
-    })
-  }
-
-}
-
-const socialSignUp = async(req, res) => {
-  try {
-    const { platform, account, phonenumber,fcmtoken } = req.body
-
+  const {platform,account,phonenumber,fcmtoken} = req.body
     const result = await authService.socialSignUp(platform,account,phonenumber,fcmtoken)
 
     return res.json(result)
 
-  } catch (err) {
-    console.error(err)
 
-    return res.status(500).json({
-      resultCode: 500,
-          data: {
-          token: ''
-      }
-    })
-  }
+})
+const emailSignIn = asyncHandler(async(req,res) => {
 
-}
-const emailSignIn = async(req,res) => {
-   try {
-    const { account, password,fcmtoken } = req.body
+const {account, password, fcmtoken} = req.body
 
     const result = await authService.emailSignIn(account,password,fcmtoken)
 
     return res.json(result)
 
-  } catch (err) {
-    console.error(err)
 
-    return res.status(500).json({
-        resultCode: 500,
-      data: {
-        isMember: false,
-        profileWritten: false,
-        userId: 0,
-        token: ''
-      }
-    })
-  }
-}
+})
 
 module.exports = { autoLogin, requestPhoneAuthCode, authenticateCode, requestEmailAuthCode, emailSignUp, socialSign, socialSignUp, emailSignIn }

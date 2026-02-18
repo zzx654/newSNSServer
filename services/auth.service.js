@@ -8,7 +8,7 @@ const bcrypt = require('../utils/bcrypt')
 const { request } = require('express')
 const { transaction } = require('../utils/transaction')
 
-const autoLogin = async ({ userId }) => {
+const autoLogin = async ( userId ) => {
   if (!userId) {
     return {
       resultCode: 200,
@@ -102,7 +102,7 @@ const authenticateCode = async (phoneNumber, authCode) => {
     data: { isCorrect }
   }
 }
-const requestEmailAuthCode = async(email) => {
+const requestEmailAuthCode = async({email}) => {
     const [rows] = await pool.query(
     'SELECT * FROM user WHERE account = ?',
     [email]
@@ -137,7 +137,7 @@ const requestEmailAuthCode = async(email) => {
   }
 }
 
-const emailSignUp = async ({ account, password, phonenumber, authCode }) => {
+const emailSignUp = async ( account, password, phonenumber, authCode ) => {
 
   //  인증코드 확인
   const cachedCode = cache.get(account)

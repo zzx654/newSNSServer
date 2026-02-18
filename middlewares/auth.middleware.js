@@ -2,13 +2,23 @@ const { verifyAccessToken } = require('../utils/jwt')
 
 function accessToken(req, res, next) {
   const authHeader = req.headers.authorization
+
   if (!authHeader) {
-    return res.status(401).json({ message: 'No authorization header' })
+    return res.status(401).json({
+      isTokenValid: false,
+      resultCode: 401,
+      data: null
+    })
   }
 
   const [type, token] = authHeader.split(' ')
+
   if (type !== 'Bearer' || !token) {
-    return res.status(401).json({ message: 'Invalid authorization format' })
+    return res.status(401).json({
+      isTokenValid: false,
+      resultCode: 401,
+      data: null
+    })
   }
 
   req.token = token
@@ -25,14 +35,16 @@ function verifyToken(req, res, next) {
       account: decoded.account || null,
     }
 
-    req.isTokenValid = true
     next()
+
   } catch (err) {
-    req.isTokenValid = false
-    next()
+    return res.status(401).json({
+      isTokenValid: false,
+      resultCode: 401,
+      data: null
+    })
   }
 }
-
 module.exports = {
   accessToken,
   verifyToken,
