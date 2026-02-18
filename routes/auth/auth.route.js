@@ -3,6 +3,7 @@ const express = require('express')
 const router = express.Router()
 
 const authController = require('../../controllers/auth.controller')
+
 const {
   accessToken,
   verifyToken,
@@ -25,6 +26,8 @@ router.post('/socialSign',authController.socialSign)
 router.post('/socialSignUp',authController.socialSignUp)
 
 router.post('/emailSignIn',authController.emailSignIn)
+
+
 
 router.get('/ping', (req, res) => {
   res.json({ pong: true })
