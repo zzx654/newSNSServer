@@ -1,32 +1,16 @@
 
 const createProfileService = require('../services/createprofile.service')
 const asyncHandler = require('../utils/asynchandler')
-const checkNickname = async(req,res) => {
-    try {
+const checkNickname = asyncHandler(async(req,res) => {
+    
         const {nickname} = req.body
           const result = await createProfileService.checkNickname(nickname)
   return res.json(result)
 
 
-    } catch(err) {
-          console.error(err)
-           return res.status(500).json({
-        resultCode:500,
-        data: {
-            isValid:false
-        }
-      })
-
-    }
-}
-const createProfile = async(req,res) => {
-    if (!req.isTokenValid) {
-   return res.status(401).json({
-      resultCode: 401,
-      isTokenValid: false,
-    });
-  }
-    try {
+})
+const createProfile = asyncHandler(async(req,res) => {
+    
         const imageUrl = req.file
   ? `/image?filename=${req.file.filename}`
   : null
@@ -39,16 +23,8 @@ const createProfile = async(req,res) => {
 
 
 
-    } catch(err) {
-        console.error(err)
-           return res.status(500).json({
-        isTokenValid:true,
-        resultCode:500
-      })
-
-    }
 
 
-}
+})
 
 module.exports = { createProfile, checkNickname }
