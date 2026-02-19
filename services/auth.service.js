@@ -102,7 +102,7 @@ const authenticateCode = async (phoneNumber, authCode) => {
     data: { isCorrect }
   }
 }
-const requestEmailAuthCode = async({email}) => {
+const requestEmailAuthCode = async(email) => {
     const [rows] = await pool.query(
     'SELECT * FROM user WHERE account = ?',
     [email]

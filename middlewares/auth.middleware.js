@@ -3,6 +3,7 @@ const { verifyAccessToken } = require('../utils/jwt')
 function accessToken(req, res, next) {
   const authHeader = req.headers.authorization
 
+  console.log(authHeader)
   if (!authHeader) {
     return res.status(401).json({
       isTokenValid: false,
@@ -28,6 +29,8 @@ function accessToken(req, res, next) {
 function verifyToken(req, res, next) {
   try {
     const decoded = verifyAccessToken(req.token)
+
+    console.log(decoded)
 
     req.user = {
       userId: decoded.userId || null,

@@ -1,7 +1,7 @@
 const authService = require('../services/auth.service')
 const asyncHandler = require('../utils/asynchandler')
 const autoLogin = asyncHandler(async (req, res) => {
-   const {userId} = req.body
+   const {userId} = req.user
     const result = await authService.autoLogin(userId)
     return res.json(result)
 
@@ -16,7 +16,9 @@ const requestPhoneAuthCode = asyncHandler (async(req, res) => {
 })
 const requestEmailAuthCode = asyncHandler(async(req, res) => {
 
-    const result = await authService.requestEmailAuthCode(req.body)
+    const {email} = req.body
+
+    const result = await authService.requestEmailAuthCode(email)
     res.json(result)
 })
 const authenticateCode = asyncHandler(async (req, res) => {
