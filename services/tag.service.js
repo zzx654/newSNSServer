@@ -1,6 +1,7 @@
 const { pool } = require("../config/db")
 
 const searchTag = async(userId,tag) => {
+
     const tagQuery = "%"+tag+"%"
     const [tags] = await pool.query(` SELECT
     t.tagid,
@@ -32,7 +33,7 @@ return {
     resultCode: 200,
     isTokenValid:true,
     data: {
-        searchedTag:tags
+        searchedTags:tags
     }
 }
    
