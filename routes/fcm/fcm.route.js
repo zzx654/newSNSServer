@@ -7,6 +7,7 @@ router.post(
   '/fcmToken',
   accessToken,
   verifyToken,
+  
   fcmController.updateFcmToken
 )
 

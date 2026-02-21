@@ -1,0 +1,19 @@
+const express = require('express')
+const router = express.Router()
+const { accessToken, verifyToken } = require('../../middlewares/auth.middleware')
+const fileUpload = require('../../middlewares/fileupload.middleware')
+const postController = require('../../controllers/post.controller')
+
+
+router.post(
+  '/uploadPost',
+  accessToken,
+  verifyToken,
+  fileUpload.fields([
+    { name: 'image', maxCount: 10 },  // 이미지 배열
+    { name: 'audio', maxCount: 1 },   // 오디오 1개
+
+  ]),
+  postController.uploadPost
+)
+module.exports = router
