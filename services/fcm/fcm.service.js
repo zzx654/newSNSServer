@@ -1,4 +1,4 @@
-const { transaction } = require('../utils/transaction')
+const { transaction } = require('../../utils/transaction')
 
 const updateFcmToken = (userId, fcmToken) => {
   return transaction(async (conn) => {

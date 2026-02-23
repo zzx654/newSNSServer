@@ -1,5 +1,5 @@
 
-const createProfileService = require('../services/createprofile.service')
+const createProfileService = require('../services/createprofile/createprofile.service')
 const asyncHandler = require('../utils/asynchandler')
 const checkNickname = asyncHandler(async(req,res) => {
     

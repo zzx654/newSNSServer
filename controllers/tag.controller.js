@@ -1,4 +1,4 @@
-const tagService = require('../services/tag.service')
+const tagService = require('../services/tag/tag.service')
 const asyncHandler = require('../utils/asynchandler')
 
 const searchTag = asyncHandler (async(req, res) => {

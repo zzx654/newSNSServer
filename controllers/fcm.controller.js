@@ -1,4 +1,4 @@
-const fcmService = require('../services/fcm.service')
+const fcmService = require('../services/fcm/fcm.service')
 const asyncHandler = require('../utils/asynchandler')
 const updateFcmToken = asyncHandler(async (req, res) => {
 

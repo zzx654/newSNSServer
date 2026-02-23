@@ -1,4 +1,4 @@
-const { pool } = require('../config/db')
+const { pool } = require('../../config/db')
 
 const createProfile = async(userId,nickname,birth,gender,imageUrl) => {
     await pool.query(

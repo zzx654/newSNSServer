@@ -1,12 +1,12 @@
-const { pool } = require('../config/db')
-const { generateCode } = require('../utils/randomcode')
-const mail = require('../utils/mail')
-const sms = require('../utils/sms')
-const { signAccessToken } = require('../utils/jwt')
-const cache = require('../utils/cache')
-const bcrypt = require('../utils/bcrypt')
+const { pool } = require('../../config/db')
+const { generateCode } = require('../../utils/randomcode')
+const mail = require('../../utils/mail')
+const sms = require('../../utils/sms')
+const { signAccessToken } = require('../../utils/jwt')
+const cache = require('../../utils/cache')
+const bcrypt = require('../../utils/bcrypt')
 const { request } = require('express')
-const { transaction } = require('../utils/transaction')
+const { transaction } = require('../../utils/transaction')
 
 const autoLogin = async ( userId ) => {
   if (!userId) {

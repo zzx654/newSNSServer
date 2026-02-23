@@ -1,4 +1,4 @@
-const { transaction } = require("../utils/transaction")
+const { transaction } = require("../../utils/transaction")
 
 const uploadPost = async(
     userId,latitude,longitude,anonymousNick,text,tags,image,audio,voteoptions) => {

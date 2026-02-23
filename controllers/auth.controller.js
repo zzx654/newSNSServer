@@ -1,4 +1,4 @@
-const authService = require('../services/auth.service')
+const authService = require('../services/auth/auth.service')
 const asyncHandler = require('../utils/asynchandler')
 const autoLogin = asyncHandler(async (req, res) => {
    const {userId} = req.user
