@@ -1,198 +1,271 @@
-function buildNewPostQuery(options) {
 
-const {
-    tagid=0,
-    sort = 'latest',
+function buildPostListQuery(options = {}) {
+  const { sort = 'latest' } = options
+
+  if (sort === 'popular') {
+    return buildPopularPostQuery(options)
+  }
+
+  return buildNormalPostQuery(options)
+}
+function getCommonJoins() {
+  return `
+    LEFT JOIN (
+      SELECT postid, COUNT(*) AS commentcount
+      FROM comment
+      GROUP BY postid
+    ) com ON p.postid = com.postid
+
+    LEFT JOIN (
+      SELECT postid, COUNT(*) AS likecount
+      FROM likepost
+      GROUP BY postid
+    ) lik ON p.postid = lik.postid
+
+    LEFT JOIN (
+      SELECT postid, GROUP_CONCAT(tagname SEPARATOR '#') AS tags
+      FROM (
+        SELECT postid, tagname
+        FROM posttag
+        LEFT JOIN tag ON posttag.tagid = tag.tagid
+      ) tag_sub
+      GROUP BY postid
+    ) tag ON p.postid = tag.postid
+
+    LEFT JOIN (
+      SELECT userid AS id, nickname, profileimage, gender
+      FROM user
+    ) getuser ON p.userid = getuser.id
+
+    LEFT JOIN (
+      SELECT postid, MAX(optiontext) AS vote
+      FROM voteoption
+      GROUP BY postid
+    ) vote ON p.postid = vote.postid
+
+    LEFT JOIN (
+      SELECT postid, userid AS isliked
+      FROM likepost
+      WHERE userid = ?
+    ) mylike ON p.postid = mylike.postid
+
+    LEFT JOIN (
+      SELECT postid, GROUP_CONCAT(filename SEPARATOR ',') AS images
+      FROM imagefile
+      GROUP BY postid
+    ) image ON p.postid = image.postid
+
+    LEFT JOIN (
+      SELECT postid, filename AS audio
+      FROM audiofile
+    ) audio ON p.postid = audio.postid
+
+    LEFT JOIN (
+      SELECT postid, COUNT(*) AS votecount
+      FROM voteresult
+      GROUP BY postid
+    ) votecount ON p.postid = votecount.postid
+  `
+}
+function buildNormalPostQuery(options) {
+  const {
+    myuserid,
+    tagid,
     latitude,
     longitude,
     distance,
     postid,
     postdate,
-    myUserid,
-    score
+    sort = 'latest'
   } = options
-//거리순
-//인기순
-//새로운순
-//태그인기순
-//태그 새로운순
 
-  const params = []
-  const whereConditions = []
+  const selectParams = []
+  const joinParams = [myuserid]
+  const whereParams = []
+  const havingParams = []
+
   let distanceSelect = ''
-  let distanceCondition=''
-  let withPopularity = ''
-  let fromClause = 'FROM post p'
-  let popularityFields = ''
+  let havingClause = ''
+  let orderClause = ''
 
+  /* ---------- 거리 계산 ---------- */
   if (latitude && longitude) {
     distanceSelect = `
-      , IF(ISNULL(p.latitude), -100.0,
-        (6371 * acos(
-          cos(radians(?)) *
-          cos(radians(p.latitude)) *
-          cos(radians(p.longitude) - radians(?)) +
-          sin(radians(?)) *
-          sin(radians(p.latitude))
-        ))
-      ) AS distance
+      , (6371 * acos(
+        cos(radians(?)) *
+        cos(radians(p.latitude)) *
+        cos(radians(p.longitude) - radians(?)) +
+        sin(radians(?)) *
+        sin(radians(p.latitude))
+      )) AS distance
     `
-    params.push(latitude, longitude, latitude)
-  }
-  params.push(myUserid)
-  //태그게시물
-  if(tagid) {
-     whereConditions.push("t.tagid = ?")
-    params.push(tagid)
-  }
- 
+    selectParams.push(latitude, longitude, latitude)
 
- 
-    switch(sort) {
-      case 'distance': {
-            whereConditions.push('p.latitude IS NOT NULL')
-    distanceCondition = 'having distance<=?'
-        orderClause = 'ORDER BY p.date DESC,p.postid DESC'
-        params.push(distance)
-        
-
-
-      }
-      case 'popular': {
-  
-
-        withPopularity = `WITH post_with_popularity AS (
-  SELECT
-    post.*,
-    IFNULL(ps.score, 0) AS score,
-    (IFNULL(ps.score, 0) / POWER(TIMESTAMPDIFF(HOUR, post.date, NOW()) + 2, 1.5)) AS popularityScore
-  FROM post
-  LEFT JOIN post_scores ps ON post.postid = ps.postid
-)`
-popularityFields = 'p.score,p.popularityScore'
-fromClause = 'FROM post_with_popularity p'
-
-
-orderClause = 'ORDER BY p.popularityScore DESC, p.postid DESC'
-
-      }
-      case 'latest': {
-        orderClause = 'ORDER BY p.date DESC,p.postid DESC'
-
-      }
-      default:
+    if (sort === 'distance' && distance) {
+      havingClause = 'HAVING distance <= ?'
+      havingParams.push(distance)
+      orderClause = 'ORDER BY distance ASC, p.postid DESC'
     }
-      //페이징 처리
-  if(postid) {
-    if(score) {
-      whereConditions.push(
-      '(p.popularityScore < ? OR (p.popularityScore = ? AND p.postid < ?))'
+  }
+
+  if (!orderClause) {
+    orderClause = 'ORDER BY p.date DESC, p.postid DESC'
+  }
+
+  /* ---------- 태그 필터 ---------- */
+  const whereConditions = []
+
+  if (tagid) {
+    whereConditions.push('t.tagid = ?')
+    whereParams.push(tagid)
+  }
+  if (tagid) {
+  whereConditions.push(`
+    EXISTS (
+      SELECT 1
+      FROM posttag pt
+      WHERE pt.postid = p.postid
+      AND pt.tagid = ?
     )
-    params.push(score)
-    params.push(score)
-    params.push(postid)
-    } else {
-      whereConditions.push(
-      '(p.date < ? OR (p.date = ? AND p.postid < ?))'
-    ) 
-    params.push(postdate)
-    params.push(postdate)
-    params.push(postid)
+  `)
+  whereParams.push(tagid)
+}
 
-    }
+  /* ---------- 페이징 ---------- */
+  if (postid) {
+    whereConditions.push(
+      '(p.date < ? OR (p.date = ? AND p.postid < ?))'
+    )
+    whereParams.push(postdate, postdate, postid)
   }
-    const whereClause =
+
+  const whereClause =
     whereConditions.length > 0
-      ? ' WHERE ' + whereConditions.join(' AND ')
+      ? 'WHERE ' + whereConditions.join(' AND ')
       : ''
 
-  return `
-  ${withPopularity}
-  SELECT
-    p.postid,
-    mylike.isliked,
-    vote.vote,
-    votecount.votecount,
-    p.userid,
-    getuser.nickname,
-    getuser.profileimage,
-    getuser.gender,
-    p.anonymous,
-    p.text,
-    tag.tags,
-    p.date,
-    image.images,
-    audio.audio,
-    IFNULL(com.commentcount,0) AS commentcount,
-    IFNULL(lik.likecount,0) AS likecount
-    ${distanceSelect}
-    ${popularityFields}
-    ${fromClause}
-
-  INNER JOIN posttag pt ON p.postid = pt.postid
-INNER JOIN tag t ON pt.tagid = t.tagid
-
-LEFT OUTER JOIN (
-  SELECT postid, COUNT(*) AS commentcount
-  FROM comment
-  GROUP BY postid
-) com ON p.postid = com.postid
-
-LEFT OUTER JOIN (
-  SELECT postid, COUNT(*) AS likecount
-  FROM likepost
-  GROUP BY postid
-) lik ON p.postid = lik.postid
-
-LEFT OUTER JOIN (
-  SELECT postid, GROUP_CONCAT(tagname SEPARATOR '#') AS tags
-  FROM (
-    SELECT postid, tagname
-    FROM posttag
-    LEFT JOIN tag ON posttag.tagid = tag.tagid
-  ) tag_sub
-  GROUP BY postid
-) tag ON p.postid = tag.postid
-
-LEFT OUTER JOIN (
-  SELECT userid AS id, nickname, profileimage, gender
-  FROM user
-) getuser ON p.userid = getuser.id
-
-LEFT JOIN (
-  SELECT postid, MAX(optiontext) AS vote
-  FROM voteoption
-  GROUP BY postid
-) vote ON p.postid = vote.postid
-
-LEFT JOIN (
-  SELECT postid, userid AS isliked
-  FROM likepost
-  WHERE userid = ?
-) mylike ON p.postid = mylike.postid
-
-LEFT JOIN (
-  SELECT postid, GROUP_CONCAT(filename SEPARATOR ',') AS images
-  FROM imagefile
-  GROUP BY postid
-) image ON p.postid = image.postid
-
-LEFT JOIN (
-  SELECT postid, filename AS audio
-  FROM audiofile
-) audio ON p.postid = audio.postid
-
-LEFT JOIN (
-  SELECT postid, COUNT(*) AS votecount
-  FROM voteresult
-  GROUP BY postid
-) votecount ON p.postid = votecount.postid
-
-  ${whereClause}
-  ${distanceCondition}
-  ${orderClause}
-
-  LIMIT 20
-
+  const query = `
+    SELECT
+      p.postid,
+      mylike.isliked,
+      vote.vote,
+      votecount.votecount,
+      p.userid,
+      getuser.nickname,
+      getuser.profileimage,
+      getuser.gender,
+      p.anonymous,
+      p.text,
+      tag.tags,
+      p.date,
+      image.images,
+      audio.audio,
+      IFNULL(com.commentcount,0) AS commentcount,
+      IFNULL(lik.likecount,0) AS likecount
+      ${distanceSelect}
+    FROM post p
+    ${getCommonJoins()}
+    ${whereClause}
+    ${havingClause}
+    ${orderClause}
+    LIMIT 20
   `
+
+  return {
+    query,
+    params: [
+      ...selectParams,
+      ...joinParams,
+      ...whereParams,
+      ...havingParams
+    ]
+  }
 }
+function buildPopularPostQuery(options) {
+  const {
+    myuserid,
+    tagid,
+    postid,
+    score
+  } = options
+
+  const joinParams = [myuserid]
+  const whereParams = []
+
+  const withClause = `
+    WITH post_with_popularity AS (
+      SELECT
+        post.*,
+        IFNULL(ps.score,0) AS score,
+        (IFNULL(ps.score,0) /
+          POWER(TIMESTAMPDIFF(HOUR, post.date, NOW()) + 2, 1.5)
+        ) AS popularityScore
+      FROM post
+      LEFT JOIN post_scores ps ON post.postid = ps.postid
+    )
+  `
+
+  const whereConditions = []
+
+ if (tagid) {
+  whereConditions.push(`
+    EXISTS (
+      SELECT 1
+      FROM posttag pt
+      WHERE pt.postid = p.postid
+      AND pt.tagid = ?
+    )
+  `)
+  whereParams.push(tagid)
+}
+
+  if (postid && score !== undefined) {
+    whereConditions.push(
+      '(p.popularityScore < ? OR (p.popularityScore = ? AND p.postid < ?))'
+    )
+    whereParams.push(score, score, postid)
+  }
+
+  const whereClause =
+    whereConditions.length > 0
+      ? 'WHERE ' + whereConditions.join(' AND ')
+      : ''
+
+  const query = `
+    ${withClause}
+    SELECT
+      p.postid,
+      mylike.isliked,
+      vote.vote,
+      votecount.votecount,
+      p.userid,
+      getuser.nickname,
+      getuser.profileimage,
+      getuser.gender,
+      p.anonymous,
+      p.text,
+      tag.tags,
+      p.date,
+      image.images,
+      audio.audio,
+      IFNULL(com.commentcount,0) AS commentcount,
+      IFNULL(lik.likecount,0) AS likecount,
+      p.score,
+      p.popularityScore
+    FROM post_with_popularity p
+    ${getCommonJoins()}
+    ${whereClause}
+    ORDER BY p.popularityScore DESC, p.postid DESC
+    LIMIT 20
+  `
+
+  return {
+    query,
+    params: [
+      ...joinParams,
+      ...whereParams
+    ]
+  }
+}
+
+module.exports = { buildPostListQuery }
