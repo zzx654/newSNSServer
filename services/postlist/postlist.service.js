@@ -28,4 +28,58 @@ const getNewPosts = async (userId,postid,postdate,latitude,longitude) => {
 
 }
 
-module.exports = { getNewPosts }
+const getNewTagPosts = async (userId,tagid,postid,postdate,latitude,longitude) => {
+
+    const{ query, params } = postListQuery.buildPostListQuery({
+        myuserid:userId,
+        tagid:tagid,
+        latitude:latitude,
+        longitude:longitude,
+        postid:postid,
+        postdate:postdate
+    })
+     const [posts] = await pool.query(
+    query,
+    params
+  )
+    console.log(posts)
+
+  return {
+    isTokenValid:true,
+    resultCode:200,
+    data: {
+        posts:posts
+    }
+  }
+
+
+}
+
+const getPopularTagPosts = async (userId,tagid,postid,score,latitude,longitude) => {
+
+    const{ query, params } = postListQuery.buildPostListQuery({
+        myuserid:userId,
+        tagid:tagid,
+        latitude:latitude,
+        longitude:longitude,
+        postid:postid,
+        score:score
+    })
+     const [posts] = await pool.query(
+    query,
+    params
+  )
+    console.log(posts)
+
+  return {
+    isTokenValid:true,
+    resultCode:200,
+    data: {
+        posts:posts
+    }
+  }
+
+
+}
+
+module.exports = { getNewPosts, getNewTagPosts,  getPopularTagPosts }
