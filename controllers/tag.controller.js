@@ -10,4 +10,12 @@ const searchTag = asyncHandler (async(req, res) => {
  
 })
 
-module.exports = { searchTag}
+const getTags = asyncHandler (async(req,res) => {
+    const { userId } = req.user
+
+    const result = await tagService.getTags(userId)
+
+    res.json(result)
+})
+
+module.exports = { searchTag, getTags}

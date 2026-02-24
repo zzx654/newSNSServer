@@ -13,4 +13,8 @@ router.post(
 
 )
 
+router.post(
+  '/getTags',accessToken,verifyToken,tagController.getTags
+)
+
 module.exports = router
