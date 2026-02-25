@@ -115,11 +115,8 @@ function buildNormalPostQuery(options) {
   /* ---------- 태그 필터 ---------- */
   const whereConditions = []
 
-  if (tagid) {
-    whereConditions.push('t.tagid = ?')
-    whereParams.push(tagid)
-  }
-  if (tagid) {
+
+ if (tagid) {
   whereConditions.push(`
     EXISTS (
       SELECT 1

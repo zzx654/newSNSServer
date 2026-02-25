@@ -18,4 +18,13 @@ const getTags = asyncHandler (async(req,res) => {
     res.json(result)
 })
 
-module.exports = { searchTag, getTags}
+const toggleFavoriteTag = asyncHandler (async(req,res) => {
+    const { userId } = req.user
+    const { tagid } = req.body
+    
+    const result = await tagService.toggleFavoriteTag(userId,tagid)
+
+    res.json(result)
+})
+
+module.exports = { searchTag, getTags, toggleFavoriteTag }

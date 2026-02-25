@@ -17,4 +17,8 @@ router.post(
   '/getTags',accessToken,verifyToken,tagController.getTags
 )
 
+router.post(
+  '/toggleFavoriteTag',accessToken,verifyToken,tagController.toggleFavoriteTag
+)
+
 module.exports = router

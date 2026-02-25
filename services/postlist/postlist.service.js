@@ -62,6 +62,7 @@ const getPopularTagPosts = async (userId,tagid,postid,score,latitude,longitude) 
         tagid:tagid,
         latitude:latitude,
         longitude:longitude,
+        sort:'popular',
         postid:postid,
         score:score
     })
