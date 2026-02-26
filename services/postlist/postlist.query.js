@@ -265,4 +265,4 @@ function buildPopularPostQuery(options) {
   }
 }
 
-module.exports = { buildPostListQuery }
+module.exports = { buildPostListQuery,getCommonJoins }

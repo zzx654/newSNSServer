@@ -9,6 +9,7 @@ const createProfileRoutes = require('./routes/createprofile/createprofile.route'
 const tagRoutes = require('./routes/tag/tag.route')
 const postRoutes = require('./routes/post/post.route')
 const postlistRoutes = require('./routes/postlist/postlist.route')
+const postdetailRoutes = require('./routes/postdetail/postdetail.route')
 const errorMiddleware = require('./middlewares/errormiddleware')
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
@@ -18,6 +19,7 @@ app.use('/createprofile',createProfileRoutes)
 app.use('/tag',tagRoutes)
 app.use('/post',postRoutes)
 app.use('/postlist',postlistRoutes)
+app.use('/postdetail',postdetailRoutes)
 app.use(errorMiddleware)
 var port = process.env.PORT || 3000
 server.listen(port, () => {
