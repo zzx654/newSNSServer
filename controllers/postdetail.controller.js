@@ -14,4 +14,15 @@ const getPost = asyncHandler(async(req,res)=> {
 
 })
 
-module.exports = { getPost }
+const getVoteInfo = asyncHandler(async(req,res)=> {
+
+    const {userId} = req.user
+    const {postid} = req.body
+
+    const result = await postdetailService.getVoteInfo(userId,postid)
+
+    res.json(result)
+
+})
+
+module.exports = { getPost, getVoteInfo }
