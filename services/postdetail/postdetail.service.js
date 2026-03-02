@@ -1,5 +1,7 @@
 const { pool } = require('../../config/db')
 const  postlistQuery = require('../postlist/postlist.query')
+const { transaction } = require("../../utils/transaction")
+const { getUserVote } = require('../../utils/getuservote')
 
 const getPostDetail = async (myuserId,postId,latitude,longitude) => {
 
@@ -64,72 +66,143 @@ const getPostDetail = async (myuserId,postId,latitude,longitude) => {
     data: posts
   }
 }
-
-const getVoteInfo = async (myuserId, postId) => {
-
-  const [postRows] = await pool.query(
-    'SELECT userid FROM post WHERE postid = ?',
-    [postId]
-  )
-
-  if (postRows.length === 0) {
-    throw new Error('Post not found')
-  }
-
-  const postRow = postRows[0]
-  const isMyPost = postRow.userid === myuserId
-
-  const [voteRows] = await pool.query(
-    'SELECT optionid FROM voteresult WHERE postid = ? AND userid = ?',
-    [postId, myuserId]
-  )
-
-  const hasVoted = voteRows.length > 0
-  const selectedChoiceId = hasVoted ? voteRows[0].optionid : null
+async function getVoteOptions(conn, postId) {
 
   const votequery = `
-  SELECT 
-    o.optionid,
-    o.optiontext,
-    COUNT(v.optionid) AS votes,
-    (
-      SELECT COUNT(*) 
-      FROM voteresult 
-      WHERE postid = ?
-    ) AS total_votes
-  FROM voteoption o
-  LEFT JOIN voteresult v 
-    ON o.optionid = v.optionid AND v.postid = ?
-  WHERE o.postid = ?
-  GROUP BY o.optionid, o.optiontext
-  ORDER BY o.optionid;
+    SELECT 
+      o.optionid,
+      o.optiontext,
+      COUNT(v.optionid) AS votes,
+      (
+        SELECT COUNT(*) 
+        FROM voteresult 
+        WHERE postid = ?
+      ) AS total_votes
+    FROM voteoption o
+    LEFT JOIN voteresult v 
+      ON o.optionid = v.optionid AND v.postid = ?
+    WHERE o.postid = ?
+    GROUP BY o.optionid, o.optiontext
+    ORDER BY o.optionid;
   `
 
-  const voteResultRows = await get_rows(conn, votequery, [postId, postId, postId])
+  const [rows] = await conn.query(votequery, [postId, postId, postId])
 
-  return {
-    resultCode: 200,
-    isTokenValid: true,
-    data: {
-      isMyPost,
-      hasVoted,
-      selectedChoiceId,
-      voteOptions: voteResultRows.map(row => {
+  return rows.map(row => {
 
-        const votes = Number(row.votes ?? 0)
-        const total = Number(row.total_votes ?? 0)
+    const votes = Number(row.votes ?? 0)
+    const total = Number(row.total_votes ?? 0)
 
-        return {
-          optionId: row.optionid,
-          optionText: row.optiontext,
-          voteCount: votes,
-          percentage: total === 0
-            ? 0
-            : Math.round((votes / total) * 1000) / 10
-        }
-      })
+    return {
+      optionId: row.optionid,
+      optionText: row.optiontext,
+      voteCount: votes,
+      percentage: total === 0
+        ? 0
+        : Math.round((votes / total) * 1000) / 10
     }
+
+  })
+}
+const getVoteInfo = async (myuserId, postId) => {
+
+  const conn = await pool.getConnection()
+
+  try {
+
+    const [postRows] = await conn.query(
+      'SELECT userid FROM post WHERE postid = ?',
+      [postId]
+    )
+
+    if (postRows.length === 0) {
+      throw new Error('Post not found')
+    }
+
+    const postRow = postRows[0]
+    const isMyPost = postRow.userid === myuserId
+
+    const { hasVoted, selectedChoiceId } = await getUserVote(conn, postId, myuserId)
+
+    const voteOptions = await getVoteOptions(conn, postId)
+
+    return {
+      resultCode: 200,
+      isTokenValid: true,
+      data: {
+        isMyPost,
+        hasVoted,
+        selectedChoiceId,
+        voteOptions
+      }
+    }
+
+  } finally {
+    conn.release()
   }
 }
 
-module.exports = { getPostDetail, getVoteInfo }
+const vote = async (myuserId, postId, optionId) => {
+
+  return transaction(async (conn) => {
+
+    const [postRows] = await conn.query(
+      'SELECT userid FROM post WHERE postid = ?',
+      [postId]
+    )
+
+    if (postRows.length === 0) {
+      throw new Error('Post not found')
+    }
+
+    await conn.query(
+      'INSERT INTO voteresult(userid,postid,optionid) VALUES(?,?,?)',
+      [myuserId, postId, optionId]
+    )
+
+    const postRow = postRows[0]
+    const isMyPost = postRow.userid === myuserId
+
+    const { hasVoted, selectedChoiceId } = await getUserVote(conn, postId, myuserId)
+
+    const voteOptions = await getVoteOptions(conn, postId)
+
+    return {
+      resultCode: 200,
+      isTokenValid: true,
+      data: {
+        isMyPost,
+        hasVoted,
+        selectedChoiceId,
+        voteOptions
+      }
+    }
+
+  })
+}
+
+const cancelVote = async(myuserId,postId) => {
+
+  return transaction(async(conn)=>{
+     const [postRows] = await conn.query(
+      'SELECT userid FROM post WHERE postid = ?',
+      [postId]
+    )
+
+    if (postRows.length === 0) {
+      throw new Error('Post not found')
+    }
+
+    await conn.query('DELETE FROM voteresult where postid=? and userid=?',[postId,myuserId])
+
+    return {
+      resultCode:200,
+      isTokenValid:true
+    }
+
+  })
+
+
+}
+
+module.exports = { getPostDetail, getVoteInfo, vote, cancelVote }

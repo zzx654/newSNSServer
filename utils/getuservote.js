@@ -1,0 +1,17 @@
+async function getUserVote(conn, postId, userId) {
+
+  const [rows] = await conn.query(
+    'SELECT optionid FROM voteresult WHERE postid = ? AND userid = ?',
+    [postId, userId]
+  )
+
+  const hasVoted = rows.length > 0
+  const selectedChoiceId = hasVoted ? rows[0].optionid : null
+
+  return { hasVoted, selectedChoiceId }
+
+}
+
+module.exports = {
+  getUserVote
+}

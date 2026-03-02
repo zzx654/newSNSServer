@@ -8,4 +8,9 @@ router.post('/getPost',accessToken,verifyToken,postdetailController.getPost)
 
 router.post('/getVoteInfo',accessToken,verifyToken,postdetailController.getVoteInfo)
 
+router.post('/vote',accessToken,verifyToken,postdetailController.vote)
+
+router.post('/cancelVote',accessToken,verifyToken,postdetailController.cancelVote)
+
+
 module.exports = router

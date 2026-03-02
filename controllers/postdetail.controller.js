@@ -25,4 +25,19 @@ const getVoteInfo = asyncHandler(async(req,res)=> {
 
 })
 
-module.exports = { getPost, getVoteInfo }
+const vote = asyncHandler(async(req,res)=> {
+     const {userId} = req.user
+    const {postid,optionid} = req.body
+    const result = await postdetailService.vote(userId,postid,optionid)
+    res.json(result)
+
+})
+
+const cancelVote = asyncHandler(async(req,res)=> {
+    const {userId} = req.user
+    const {postid} = req.body
+    const result = await postdetailService.cancelVote(userId,postid)
+    res.json(result)
+})
+
+module.exports = { getPost, getVoteInfo, vote, cancelVote }
