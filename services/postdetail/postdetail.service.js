@@ -3,6 +3,8 @@ const  postlistQuery = require('../postlist/postlist.query')
 const { transaction } = require("../../utils/transaction")
 const { getUserVote } = require('../../utils/getuservote')
 
+const notification = require('../notification/notification.service')
+
 const getPostDetail = async (myuserId,postId,latitude,longitude) => {
 
   let params = []
@@ -53,7 +55,7 @@ const getPostDetail = async (myuserId,postId,latitude,longitude) => {
 
   const [posts] = await pool.query(query, params)
 
-  if (!post) {
+  if (!posts) {
     return {
       resultCode: 404,
       message: 'Post not found'
@@ -63,7 +65,9 @@ const getPostDetail = async (myuserId,postId,latitude,longitude) => {
   return {
     resultCode: 200,
     isTokenValid: true,
-    data: posts
+    data: {
+        posts:posts
+    }
   }
 }
 async function getVoteOptions(conn, postId) {
@@ -205,4 +209,65 @@ const cancelVote = async(myuserId,postId) => {
 
 }
 
-module.exports = { getPostDetail, getVoteInfo, vote, cancelVote }
+const toggleLikePost = async(myuserId,postId) => {
+
+  const post = await pool.query(conn,'SELECT *FROM post where postid=?',[postId])
+    const postUser = await pool.query(conn,'SELECT *FROM user where userid=?',[post[0].userid])
+    const myuser = await pool.query('SELECT * FROM user where userid=?',[myuserId])
+
+     try {
+          await pool.query(
+              'INSERT INTO likepost (userid,postid) VALUES (?, ?)',
+              [myuserId,postId]
+          )
+          if(myuserId!=postUser[0].userid) {
+            await notification.canCreateNo
+            const canCreate = await notification.canCreateNotification(
+              'LIKEPOST',
+              postUser[0],
+              { postId: postId }
+            )
+          }
+          if(canCreate) {
+            await notification.createNotification(
+              myuser[0],
+              postUser[0],
+              null,
+              'LIKEPOST',
+              {postId:postId},
+              null
+
+            )
+          }
+          return {
+            resultCode:200,
+            isTokenValid:true,
+            data: {
+              isLiked:true
+            }
+          }
+  
+      } catch (err) {
+          if(err.code === 'ER_DUP_ENTRY') {
+              await pool.query(
+                  'DELETE FROM likepost WHERE userid = ? AND postid = ?',
+                  [myuserId,postId]
+              )
+               return {
+            resultCode:200,
+            isTokenValid:true,
+            data: {
+              isLiked:false
+            }
+          }
+  
+          }else {
+              throw err
+          }
+  
+      }
+
+
+}
+
+module.exports = { getPostDetail, getVoteInfo, vote, cancelVote, toggleLikePost }

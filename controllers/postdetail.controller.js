@@ -40,4 +40,14 @@ const cancelVote = asyncHandler(async(req,res)=> {
     res.json(result)
 })
 
-module.exports = { getPost, getVoteInfo, vote, cancelVote }
+const toggleLikePost = asyncHandler(async(req,res)=> {
+    const {userId} = req.user
+    const {postid} = req.body
+
+    const result = await postdetailService.toggleLikePost(userId,postid)
+
+    res.json(result)
+
+})
+
+module.exports = { getPost, getVoteInfo, vote, cancelVote, toggleLikePost }

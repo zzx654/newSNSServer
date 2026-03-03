@@ -5,21 +5,13 @@ function accessToken(req, res, next) {
 
   console.log(authHeader)
   if (!authHeader) {
-    return res.status(401).json({
-      isTokenValid: false,
-      resultCode: 401,
-      data: null
-    })
+    return next(new Error('TOKEN_INVALID'))
   }
 
   const [type, token] = authHeader.split(' ')
 
   if (type !== 'Bearer' || !token) {
-    return res.status(401).json({
-      isTokenValid: false,
-      resultCode: 401,
-      data: null
-    })
+    return next(new Error('TOKEN_INVALID'))
   }
 
   req.token = token
@@ -41,11 +33,8 @@ function verifyToken(req, res, next) {
     next()
 
   } catch (err) {
-    return res.status(401).json({
-      isTokenValid: false,
-      resultCode: 401,
-      data: null
-    })
+    return next(new Error('TOKEN_INVALID'))
+  
   }
 }
 module.exports = {

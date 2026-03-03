@@ -1,4 +1,4 @@
-const { pool } = require('../config/db');
+const { pool } = require('../../config/db');
 const { shortenMultiline } = require('../../utils/shortenmultiline')
 const { sendFCM } = require('../../utils/fcm')
 async function createNotification({
@@ -95,5 +95,5 @@ async function canCreateNotification(type, senderId, receiverId, extraJson) {
 
 module.exports = {
   createNotification,
-  canCreateLikeNotification
+  canCreateNotification
 };
