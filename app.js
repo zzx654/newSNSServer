@@ -1,4 +1,5 @@
 require('dotenv').config()
+require('./jobs/snapshot.job')
 const http = require('http')
 const express = require('express')
 const app = express()
