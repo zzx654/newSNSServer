@@ -1,0 +1,25 @@
+const commentlistService = require('../services/comment/commentlist.service')
+const asyncHandler = require('../utils/asynchandler')
+
+const getComments = asyncHandler(async(req,res)=> {
+
+    const {userId} = req.user
+    const {postid,commentid,commentdate} = req.body
+
+    const result = await commentlistService.getComments(userId,postid,commentid,commentdate)
+
+    res.json(result)
+
+})
+
+const getPopularComments = asyncHandler(async(req,res)=> {
+
+     const {userId} = req.user
+    const {postid,commentid,score} = req.body
+
+    const result = await commentlistService.getPopularComments(userId,postid,commentid,score)
+
+    res.json(result)
+})
+
+module.exports = { getComments, getPopularComments }
