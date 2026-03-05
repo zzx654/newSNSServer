@@ -22,4 +22,14 @@ const getPopularComments = asyncHandler(async(req,res)=> {
     res.json(result)
 })
 
-module.exports = { getComments, getPopularComments }
+const getNotificationComment = asyncHandler(async(req,res)=> {
+    const {userId} = req.user
+
+    const {commentid} = req.body
+
+    const result = await commentlistService.getNotificationComment(userId,commentid)
+    res.json(result)
+
+})
+
+module.exports = { getComments, getPopularComments,getNotificationComment }

@@ -8,4 +8,6 @@ router.post('/getComments',accessToken,verifyToken,commentController.getComments
 
 router.post('/getPopularComment',accessToken,verifyToken,commentController.getPopularComments)
 
+router.post('/getNotificationComment',accessToken,verifyToken,commentController.getNotificationComment)
+
 module.exports = router
