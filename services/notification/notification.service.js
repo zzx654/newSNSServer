@@ -1,14 +1,17 @@
 const { pool } = require('../../config/db');
 const { shortenMultiline } = require('../../utils/shortenmultiline')
 const { sendFCM } = require('../../utils/fcm')
-async function createNotification({
+async function createNotification(
   sender,
   receiver,
   isAnonymous,
   type,
   commentContent,
   extraJson
-}) {
+) {
+ 
+  
+  
    let title = '';
   let content = '';
   switch(type) {
@@ -38,26 +41,38 @@ async function createNotification({
   if (commentContent) {
     content += `\n“${shortenMultiline(commentContent)}”`;
   }
-
-  await pool.query(
-    `INSERT INTO notifications
+     console.log('뭐냐고 씨발')
+            console.log(sender.userid)
+            console.log(receiver.userid)
+            console.log('하..진짜')
+  const [result] = await pool.query(
+    `INSERT INTO notification
      (receiverId, senderId, type, content, extraJson)
      VALUES (?, ?, ?, ?, ?)`,
     [receiver.userid, sender.userid, type, content, JSON.stringify(extraJson)]
   );
-    const message = {
-    token: receiver.fcmtoken,
-    data: {
-          notificationId: notification.id.toString(),
+  const [rows] = await pool.query(
+  `SELECT id, type, content, date, extraJson
+   FROM notification
+   WHERE id = ?`,
+  [result.insertId]
+);
+
+const notification = rows[0];
+ const message = {
+  token: receiver.fcmtoken,
+  data: {
+    notificationId: String(notification.id),
     type: String(notification.type),
     content: String(notification.content),
-    date: formatLocalDate(notification.date),   // ★ FIXED
+    date: String(notification.date),
     extraJson: JSON.stringify(notification.extraJson),
     title: String(title),
-    ...(commentContent != null && { body: `"${shortenMultiline(commentContent)}"` })
-    }
-
-  };
+    ...(typeof commentContent === 'string' && {
+      body: `"${shortenMultiline(commentContent)}"`
+    })
+  }
+};
   sendFCM(message)
 }
 
@@ -86,7 +101,7 @@ async function canCreateNotification(type, senderId, receiverId, extraJson) {
 
   if (type === 'FOLLOW') {
     sql += ` AND JSON_EXTRACT(extrajson, '$.followerId') = ?`;
-    params.push(extraJson.follwerId);
+    params.push(extraJson.followerId);
   }
 
   const [rows] = await pool.query(sql, params);

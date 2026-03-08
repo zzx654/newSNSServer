@@ -6,6 +6,7 @@ const getComments = asyncHandler(async(req,res)=> {
     const {userId} = req.user
     const {postid,commentid,commentdate} = req.body
 
+
     const result = await commentlistService.getComments(userId,postid,commentid,commentdate)
 
     res.json(result)

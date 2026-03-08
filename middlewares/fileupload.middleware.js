@@ -2,44 +2,41 @@ const multer = require('multer');
 const path = require('path');
 const randomstring = require('randomstring');
 
+function getExtension(mimetype) {
+  switch (mimetype) {
+    case 'image/jpeg': return 'jpg';
+    case 'image/png': return 'png';
+    case 'image/gif': return 'gif';
+    case 'image/bmp': return 'bmp';
+    case 'audio/wav': return 'wav';
+    case 'audio/mp3':
+    case 'audio/mpeg': return 'mp3';
+    case 'audio/mp4':
+    case 'video/mp4': return 'mp4';
+    default: return 'jpg';
+  }
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../files'));
-  },
-  filename: (req, file, cb) => {
 
-    let extension;
+    let folder;
 
-    switch (file.mimetype) {
-      case 'image/jpeg':
-        extension = 'jpg';
-        break;
-      case 'image/png':
-        extension = 'png';
-        break;
-      case 'image/gif':
-        extension = 'gif';
-        break;
-      case 'image/bmp':
-        extension = 'bmp';
-        break;
-      case 'audio/wav':
-        extension = 'wav';
-        break;
-      case 'audio/mp3':
-        extension = 'mp3';
-        break;
-      case 'audio/mpeg':
-        extension = 'mp3';
-        break;
-      case 'audio/mp4':
-      case 'video/mp4':
-        extension = 'mp4';
-        break;
-      default:
-        extension = 'jpg';
+    if (file.fieldname === 'image') {
+      folder = 'post';
+    } 
+    else if (file.fieldname === 'audio') {
+      folder = 'audio';
+    } 
+    else if (file.fieldname === 'profile') {
+      folder = 'profile';
     }
 
+    cb(null, path.join(__dirname, `../uploads/${folder}`));
+  },
+
+  filename: (req, file, cb) => {
+    const extension = getExtension(file.mimetype);
     const fileName = randomstring.generate(25);
     cb(null, `${fileName}.${extension}`);
   }
@@ -48,8 +45,8 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-  },
+    fileSize: 10 * 1024 * 1024
+  }
 });
 
 module.exports = upload;

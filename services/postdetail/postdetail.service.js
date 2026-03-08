@@ -211,34 +211,41 @@ const cancelVote = async(myuserId,postId) => {
 
 const toggleLikePost = async(myuserId,postId) => {
 
-  const post = await pool.query(conn,'SELECT *FROM post where postid=?',[postId])
-    const postUser = await pool.query(conn,'SELECT *FROM user where userid=?',[post[0].userid])
-    const myuser = await pool.query('SELECT * FROM user where userid=?',[myuserId])
+const [postRows] = await pool.query('SELECT * FROM post WHERE postid=?', [postId]);
+const post = postRows[0];
+
+const [postUserRows] = await pool.query('SELECT * FROM user WHERE userid=?', [post.userid]);
+const postUser = postUserRows[0];
+
+const [myuserRows] = await pool.query('SELECT * FROM user WHERE userid=?', [myuserId]);
+const myuser = myuserRows[0];
 
      try {
           await pool.query(
               'INSERT INTO likepost (userid,postid) VALUES (?, ?)',
               [myuserId,postId]
           )
-          if(myuserId!=postUser[0].userid) {
-            await notification.canCreateNo
-            const canCreate = await notification.canCreateNotification(
-              'LIKEPOST',
-              postUser[0],
-              { postId: postId }
-            )
-          }
-          if(canCreate) {
-            await notification.createNotification(
-              myuser[0],
-              postUser[0],
-              null,
-              'LIKEPOST',
-              {postId:postId},
-              null
+          if(myuserId!=postUser.userid) {
+      
+          const canCreate = await notification.canCreateNotification(
+  'LIKEPOST',
+  myuserId,
+  postUser.userid,
+  { postId: postId }
+);
 
-            )
+if (canCreate) {
+  await notification.createNotification(
+    myuser,
+    postUser,
+    null,
+    'LIKEPOST',
+    null,
+    { postId: postId }
+  );
+}
           }
+        
           return {
             resultCode:200,
             isTokenValid:true,
