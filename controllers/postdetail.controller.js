@@ -44,8 +44,6 @@ const toggleLikePost = asyncHandler(async(req,res)=> {
     const {userId} = req.user
     const {postid} = req.body
 
-    console.log('어허')
-    console.log(postid)
 
     const result = await postdetailService.toggleLikePost(userId,postid)
 

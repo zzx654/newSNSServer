@@ -41,10 +41,7 @@ async function createNotification(
   if (commentContent) {
     content += `\n“${shortenMultiline(commentContent)}”`;
   }
-     console.log('뭐냐고 씨발')
-            console.log(sender.userid)
-            console.log(receiver.userid)
-            console.log('하..진짜')
+  
   const [result] = await pool.query(
     `INSERT INTO notification
      (receiverId, senderId, type, content, extraJson)
