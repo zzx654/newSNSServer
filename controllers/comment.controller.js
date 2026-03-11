@@ -53,4 +53,36 @@ const toggleLikeComment = asyncHandler(async(req,res) => {
     res.json(result)
 })
 
-module.exports = { getComments, getPopularComments, getNotificationComment, postComment, toggleLikeComment }
+const getSelectedComment = asyncHandler(async(req,res) => {
+
+        const {userId} = req.user
+
+    const { commentid }  = req.body
+
+    const result = await commentlistService.getSelectedComment(userId,commentid)
+
+    res.json(result)
+})
+
+const getReplies = asyncHandler(async(req,res) => {
+    const {userId} = req.user
+
+    const { ref,commentid,commentdate} = req.body
+
+    const result = await commentlistService.getReplies(userId,ref,commentid,commentdate)
+
+    res.json(result)
+})
+
+const postReply = asyncHandler(async(req,res) => {
+
+    const {userId} = req.user
+
+    const {ref,postid,text,anonymousNick} = req.body
+
+    const result = await commentlistService.postReply(userId,ref,postid,text,anonymousNick)
+
+    res.json(result)
+})
+
+module.exports = { getComments, getPopularComments, getNotificationComment, postComment, toggleLikeComment, getSelectedComment, getReplies, postReply }

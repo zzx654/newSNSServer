@@ -14,4 +14,10 @@ router.post('/postComment',accessToken,verifyToken,commentController.postComment
 
 router.post('/toggleLikeComment',accessToken,verifyToken,commentController.toggleLikeComment)
 
+router.post('/getSelectedComment',accessToken,verifyToken,commentController.getSelectedComment)
+
+router.post('/getReplies',accessToken,verifyToken,commentController.getReplies)
+
+router.post('/postReply',accessToken,verifyToken,commentController.postReply)
+
 module.exports = router
