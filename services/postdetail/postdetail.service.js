@@ -5,17 +5,13 @@ const { getUserVote } = require('../../utils/getuservote')
 
 const notification = require('../notification/notification.service')
 
-const getPostDetail = async (myuserId,postId,latitude,longitude) => {
+const getPostById = async (conn, myuserId, postId, latitude, longitude) => {
 
   let params = []
   let distanceSelect = ''
 
-  
-
-
-  
-  if (latitude&&longitude) {
-     distanceSelect = `
+  if (latitude && longitude) {
+    distanceSelect = `
       , (6371 * acos(
         cos(radians(?)) *
         cos(radians(p.latitude)) *
@@ -24,38 +20,44 @@ const getPostDetail = async (myuserId,postId,latitude,longitude) => {
         sin(radians(p.latitude))
       )) AS distance
     `
-    params.push(latitude, longitude,latitude)
+    params.push(latitude, longitude, latitude)
   }
-  params.push(myuserId,postId)
-    const query = `
-      SELECT
-        p.postid,
-        mylike.isliked,
-        vote.vote,
-        votecount.votecount,
-        p.userid,
-        getuser.nickname,
-        getuser.profileimage,
-        getuser.gender,
-        p.anonymous,
-        p.text,
-        tag.tags,
-        p.date,
-        image.images,
-        audio.audio,
-        IFNULL(com.commentcount,0) AS commentcount,
-        IFNULL(lik.likecount,0) AS likecount
-        ${distanceSelect}
-      FROM post p
-      ${postlistQuery.getCommonJoins()}
-      where p.postid = ?
-    
-    `
 
+  params.push(myuserId, postId)
 
-  const [posts] = await pool.query(query, params)
+  const query = `
+    SELECT
+      p.postid,
+      mylike.isliked,
+      vote.vote,
+      votecount.votecount,
+      p.userid,
+      getuser.nickname,
+      getuser.profileimage,
+      getuser.gender,
+      p.anonymous,
+      p.text,
+      tag.tags,
+      p.date,
+      image.images,
+      audio.audio,
+      IFNULL(com.commentcount,0) AS commentcount,
+      IFNULL(lik.likecount,0) AS likecount
+      ${distanceSelect}
+    FROM post p
+    ${postlistQuery.getCommonJoins()}
+    WHERE p.postid = ?
+  `
 
-  if (!posts) {
+  const [posts] = await conn.query(query, params)
+
+  return posts
+}
+const getPostDetail = async (myuserId, postId, latitude, longitude) => {
+
+  const posts = await getPostById(pool, myuserId, postId, latitude, longitude)
+
+  if (!posts.length) {
     return {
       resultCode: 404,
       message: 'Post not found'
@@ -65,9 +67,7 @@ const getPostDetail = async (myuserId,postId,latitude,longitude) => {
   return {
     resultCode: 200,
     isTokenValid: true,
-    data: {
-        posts:posts
-    }
+    data: { posts }
   }
 }
 async function getVoteOptions(conn, postId) {
@@ -277,4 +277,28 @@ if (canCreate) {
 
 }
 
-module.exports = { getPostDetail, getVoteInfo, vote, cancelVote, toggleLikePost }
+const deletePost = async(myuserId,postid) => {
+
+  return transaction(async (conn) => {
+    const [postRows] = await conn.query(
+      'SELECT userid FROM post WHERE postid = ? and userid=?',
+      [postid,myuserId]
+    )
+      
+    if (!postRows) throw new Error('Post not found')
+      
+    await conn.query('DELETE FROM post where postid=? and userid=?',[postid,myuserId])
+
+    return {
+      resultCode:200,
+      isTokenValid:true
+    }
+
+  })
+
+}
+
+
+
+
+module.exports = { getPostDetail, getVoteInfo, vote, cancelVote, toggleLikePost, deletePost, getPostById }

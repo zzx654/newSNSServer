@@ -51,4 +51,14 @@ const toggleLikePost = asyncHandler(async(req,res)=> {
 
 })
 
-module.exports = { getPost, getVoteInfo, vote, cancelVote, toggleLikePost }
+const deletePost = asyncHandler(async(req,res)=> {
+    const {userId} = req.user
+    const {postid} = req.body
+    const result = await postdetailService.deletePost(userId,postid)
+
+    res.json(result)
+
+
+})
+
+module.exports = { getPost, getVoteInfo, vote, cancelVote, toggleLikePost, deletePost }

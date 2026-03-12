@@ -14,5 +14,7 @@ router.post('/cancelVote',accessToken,verifyToken,postdetailController.cancelVot
 
 router.post('/toggleLikePost',accessToken,verifyToken,postdetailController.toggleLikePost)
 
+router.post('/deletePost',accessToken,verifyToken,postdetailController.deletePost)
+
 
 module.exports = router

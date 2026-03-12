@@ -16,4 +16,16 @@ router.post(
   ]),
   postController.uploadPost
 )
+
+router.post(
+  '/editPost',
+  accessToken,
+  verifyToken,
+  fileUpload.fields([
+    { name: 'image', maxCount: 10 },  // 이미지 배열
+    { name: 'audio', maxCount: 1 },   // 오디오 1개
+
+  ]),
+  postController.editPost
+)
 module.exports = router

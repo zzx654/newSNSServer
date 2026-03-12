@@ -1,6 +1,8 @@
 const { pool } = require('../../config/db')
 const postListQuery = require('./postlist.query')
 
+
+
 const getNewPosts = async (userId,postid,postdate,latitude,longitude) => {
 
     const{ query, params } = postListQuery.buildPostListQuery({
