@@ -171,7 +171,7 @@ const getNotificationComment = async(myuserId,commentid) => {
         getuser.profileimage,
         getuser.gender,
         (mylik.userid IS NOT NULL) AS commentliked
-        FROM comment
+        FROM comment com
         ${commentListQuery.getCommonJoins()}
         WHERE
         com.ref=(select ref from comment WHERE commentid = ?)
@@ -179,7 +179,7 @@ const getNotificationComment = async(myuserId,commentid) => {
         ORDER BY com.depth ASC
 
   `
-  const comments = await pool.query(query,params)
+  const [comments] = await pool.query(query,params)
   let parentComment = null;
   let replyComment = null;
   for(const row of comments) {
@@ -191,8 +191,14 @@ const getNotificationComment = async(myuserId,commentid) => {
   }
 
   return {
-    comment:parentComment,
+    isTokenValid:true,
+    resultCode:200,
+    data: {
+          comment:parentComment,
     reply:replyComment
+
+    }
+
   }
 
 }
