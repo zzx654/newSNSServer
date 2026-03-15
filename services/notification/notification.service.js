@@ -256,11 +256,51 @@ if (typeof extra === "string") {
   }
 }
 
+const readAllNotifications = async(myuserId) => {
+      await pool.query('UPDATE notification SET isread=1 where receiverid=?',[myuserId])
+        
+ 
+      const [getNotificationsResult] = await pool.query('select *from notification where receiverid=?',[myuserId])
+      const unreadCount = await getUnreadCount(myuserId)
+    return {
+      isTokenValid:true,
+      resultCode:200,
+      data : {
+         notifications: getNotificationsResult,
+      unreadCount:unreadCount
+
+      }
+     
+    }
+
+}
+
+const deleteNotifications = async(myuserId) => {
+  await pool.query("DELETE FROM notification where receiverid=?",[myuserId])
+
+      const [getNotificationsResult] = await pool.query('select *from notification where receiverid=?',[myuserId])
+      const unreadCount = await getUnreadCount(myuserId)
+    return {
+           isTokenValid:true,
+      resultCode:200,
+      data: {
+              notifications: getNotificationsResult,
+      unreadCount:unreadCount
+
+      }
+
+    }
+
+
+
+}
 
 
 module.exports = {
   createNotification,
   canCreateNotification,
   getNotifications,
-  readNotification
+  readNotification,
+  readAllNotifications,
+  deleteNotifications
 };

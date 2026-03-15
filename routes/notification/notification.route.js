@@ -16,5 +16,24 @@ router.post(
   notificationController.readNotification
 
 )
+router.post(
+    '/readAllNotifications',
+      accessToken,
+  verifyToken,
+  notificationController.readAllNotifications
+
+)
+
+router.post(
+    '/deleteNotifications',
+      accessToken,
+  verifyToken,
+  notificationController.deleteNotifications
+
+)
+
+
+
+
 
 module.exports = router
