@@ -133,7 +133,18 @@ const notification = rows[0];
     })
   }
 };
-  sendFCM(message)
+
+sendFCM(message).catch(err => {
+  console.log("FCM error:", err.code)
+})
+  /**try {
+    sendFCM(message)
+
+  } catch(err) {
+    console.log(err)
+
+  }**/
+  
 }
 
 async function canCreateNotification(type, senderId, receiverId, extraJson) {
