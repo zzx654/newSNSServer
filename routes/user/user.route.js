@@ -20,4 +20,11 @@ router.post(
     userController.toggleFollowUser
 )
 
+router.post(
+  '/getUserInfo',
+  accessToken,
+  verifyToken,
+  userController.getUserInfo
+)
+
 module.exports = router

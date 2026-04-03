@@ -114,4 +114,51 @@ const toggleFollowUser = async(myuserId,userid) => {
 
 }
 
-module.exports = { getSearchedUsers, toggleFollowUser }
+const getUserInfo = async(myuserId,targetUserId) => {
+
+    
+    
+    const params = [myuserId,targetUserId]
+   
+      const query = `
+    SELECT
+        user.userid,
+        user.nickname,
+        user.gender,
+        user.profileimage,
+        IF(ISNULL(myfollow.followerid),0,1) AS following,
+        follow.followercount,
+        IFNULL(post.postcount, 0) AS postcount
+    FROM
+        user
+    LEFT OUTER JOIN
+        (SELECT * FROM follows WHERE followerid = ?) myfollow
+    ON 
+        user.userid = myfollow.followingid
+    LEFT OUTER JOIN
+        (SELECT followingid, COUNT(*) AS followercount FROM follows GROUP BY followingid) follow
+    ON
+        user.userid = follow.followingid
+    LEFT OUTER JOIN
+        (SELECT userid, COUNT(*) AS postcount FROM post GROUP BY userid) post  
+    ON
+        user.userid = post.userid  
+    WHERE
+        user.userid = ?
+    LIMIT 1
+    `
+    const [userRows] = await pool.query(query,params)
+
+    return {
+        isTokenValid:true,
+        resultCode:200,
+        data: {
+            users:userRows
+        }
+
+    }
+
+
+}
+
+module.exports = { getSearchedUsers, toggleFollowUser, getUserInfo }

@@ -17,4 +17,12 @@ const toggleFollowUser = asyncHandler(async(req,res)=> {
     
 })
 
-module.exports = { getSearchedUsers, toggleFollowUser}
+const getUserInfo = asyncHandler(async(req,res) => {
+   const { userid } = req.body
+   const { userId } = req.user
+   const result = await userService.getUserInfo(userId,userid)
+
+   res.json(result)
+})
+
+module.exports = { getSearchedUsers, toggleFollowUser,getUserInfo }
