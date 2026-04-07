@@ -71,6 +71,7 @@ function buildNormalPostQuery(options) {
   const {
     myuserid,
     tagid,
+    targetuserid,
     latitude,
     longitude,
     distance,
@@ -79,6 +80,8 @@ function buildNormalPostQuery(options) {
     sort = 'latest'
   } = options
 
+
+  console.log(postdate)
   const selectParams = []
   const joinParams = [myuserid]
   const whereParams = []
@@ -126,6 +129,12 @@ function buildNormalPostQuery(options) {
     )
   `)
   whereParams.push(tagid)
+}
+/* ---------- 유저 필터 ---------- */
+
+if(targetuserid) {
+  whereConditions.push('p.userid = ?')
+  whereParams.push(targetuserid)
 }
 
   /* ---------- 페이징 ---------- */

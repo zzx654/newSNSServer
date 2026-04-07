@@ -28,4 +28,13 @@ const getPopularTagPosts = asyncHandler(async(req,res) => {
     res.json(result)
 })
 
-module.exports = { getNewPosts, getNewTagPosts, getPopularTagPosts }
+const getUserPosts = asyncHandler(async(req,res) => {
+    const {userId} = req.user
+    const {userid,postid,postdate,latitude,longitude} = req.body
+
+    const result = await postlistService.getUserPosts(userId,userid,postid,postdate,latitude,longitude)
+
+    res.json(result)
+})
+
+module.exports = { getNewPosts, getNewTagPosts, getPopularTagPosts, getUserPosts }

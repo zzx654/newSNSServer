@@ -9,4 +9,6 @@ router.post('/getNewTagPosts',accessToken,verifyToken,postlistController.getNewT
 
 router.post('/getPopularTagPosts',accessToken,verifyToken,postlistController.getPopularTagPosts)
 
+router.post('/getUserPosts',accessToken,verifyToken,postlistController.getUserPosts)
+
 module.exports = router
