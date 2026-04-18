@@ -1,17 +1,40 @@
 const { transaction } = require("../../utils/transaction")
 const  postlistQuery = require('../postlist/postlist.query')
 const { getPostById} = require('../../services/postdetail/postdetail.service')
+const createThumbnail = require('../../utils/thumbnail')
+const path = require('path');
 const uploadPost = async(
-    userId,latitude,longitude,anonymousNick,text,tags,image,audio,voteoptions) => {
+    userId,latitude,longitude,anonymousNick,text,tags,mediaList,voteoptions) => {
         var tagarr = new Array()
-        var imagearr = new Array()
-        var audioUrl = ''
+        //var imagearr = new Array()
+        var mediaData = []
+        //var audioUrl = ''
         if(tags) {
            
             tagarr = tags.split('#').filter(t => t.length > 0)
         }
+        for(const media of mediaList) {
+            const { file, type } = media
 
-        if(image) {
+            if(type === "VIDEO") {
+                const videoResult = await uploadVideo(file)
+                mediaData.push({
+                    url: videoResult.videoUrl,
+                    thumbnailUrl: videoResult.thumbnailUrl,
+                    type
+                })
+            } else {
+                   mediaData.push({
+                    url: `/uploads/media/${file.filename}`,
+                    thumbnailUrl: null,
+                    type
+                })
+
+            }
+
+        }
+
+        /**if(image) {
             for (var i = 0; i < image.length; i++) {
                 imagearr[i] = '/image?filename=' + image[i].filename;
                 console.log(image[i].filename);
@@ -19,7 +42,7 @@ const uploadPost = async(
         }
         if(audio && audio.length>0) {
             audioUrl = '/audio?filename=' + audio[0].filename;
-        }
+        }**/
         return transaction ( async(conn)=>{
             const [postResult] = await conn.query(
           `INSERT INTO post 
@@ -47,7 +70,14 @@ const uploadPost = async(
                 )
             }
         }
-        for(var i=0;i<imagearr.length;i++) {
+        for( const media of mediaData) {
+            const { url, type } = media
+            await conn.query(
+                'INSERT INTO media(postid,type,url) value (?,?,?)',
+                [postResult.insertId,type,url]
+            )
+        }
+        /**for(var i=0;i<imagearr.length;i++) {
             await conn.query(
                 'INSERT INTO imagefile(postid,filename) value (?,?)',
                     [postResult.insertId,imagearr[i]]
@@ -59,7 +89,7 @@ const uploadPost = async(
             [postResult.insertId,audioUrl]
         )
 
-        }
+        }**/
         if(voteoptions) {
             let voteoptionsArr = []
             try {
@@ -81,7 +111,27 @@ const uploadPost = async(
         }
         })
 }
+const uploadVideo = async(
+    file
 
+) => {
+    const videoPath = file.path;
+  const fileName = file.filename.split('.')[0];
+
+  const thumbDir = path.join(__dirname, '../../uploads/thumbnail');
+
+  const thumbnailFile = await createThumbnail(
+    videoPath,
+    thumbDir,
+    fileName
+  );
+
+  return {
+    videoUrl: `/uploads/media/${file.filename}`,
+    thumbnailUrl: `/uploads/thumbnail/${thumbnailFile}`
+  };
+    
+}
 const editPost = async(
     postid,myuserId,latitude,longitude,anonymousNick,text,tags,image,deleteimage,audio,deleteaudio
 ) => {
@@ -196,4 +246,5 @@ const editPost = async(
 
 
 }
-module.exports = {uploadPost,editPost}
+
+module.exports = {uploadPost,editPost, uploadVideo}

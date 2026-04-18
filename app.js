@@ -29,6 +29,8 @@ app.use('/comment',commentRoutes)
 app.use('/',mediaRoutes)
 app.use('/notification',notificationRoutes)
 app.use('/user',userRoutes)
+app.use('/uploads', express.static('uploads'));
+app.use(express.urlencoded({ extended: true }))
 app.use(errorMiddleware)
 var port = process.env.PORT || 3000
 server.listen(port, () => {

@@ -13,6 +13,8 @@ function getExtension(mimetype) {
     case 'audio/mpeg': return 'mp3';
     case 'audio/mp4':
     case 'video/mp4': return 'mp4';
+    case 'video/quicktime': return 'mov';
+    case 'video/x-matroska': return 'mkv';
     default: return 'jpg';
   }
 }
@@ -20,19 +22,7 @@ function getExtension(mimetype) {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
 
-    let folder;
-
-    if (file.fieldname === 'image') {
-      folder = 'post';
-    } 
-    else if (file.fieldname === 'audio') {
-      folder = 'audio';
-    } 
-    else if (file.fieldname === 'profile') {
-      folder = 'profile';
-    }
-
-    cb(null, path.join(__dirname, `../uploads/${folder}`));
+  cb(null, path.join(__dirname, `../uploads/media`))
   },
 
   filename: (req, file, cb) => {
@@ -45,7 +35,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024
+    fileSize: 500 * 1024 * 1024
   }
 });
 

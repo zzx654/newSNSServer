@@ -5,7 +5,7 @@ const fileUpload = require('../../middlewares/fileupload.middleware')
 const postController = require('../../controllers/post.controller')
 
 
-router.post(
+/**router.post(
   '/uploadPost',
   accessToken,
   verifyToken,
@@ -14,6 +14,13 @@ router.post(
     { name: 'audio', maxCount: 1 },   // 오디오 1개
 
   ]),
+  postController.uploadPost
+)**/
+router.post(
+  '/uploadPost',
+  accessToken,
+  verifyToken,
+  fileUpload.array('media', 10), 
   postController.uploadPost
 )
 
@@ -27,5 +34,9 @@ router.post(
 
   ]),
   postController.editPost
+)
+router.post(
+  '/postVideo',
+  fileUpload.single('video'), postController.uploadVideo
 )
 module.exports = router
