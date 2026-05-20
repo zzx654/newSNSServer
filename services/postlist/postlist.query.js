@@ -164,8 +164,21 @@ if(targetuserid) {
       p.text,
       tag.tags,
       p.date,
-      image.images,
-      audio.audio,
+       IFNULL(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'id', m.id,
+          'url', m.url,
+          'type', m.type,
+          'thumbnailUrl', m.thumbnailurl
+        )
+      )
+      FROM media m
+      WHERE m.postid = p.postid
+    ),
+    JSON_ARRAY()
+  ) AS media,
       IFNULL(com.commentcount,0) AS commentcount,
       IFNULL(lik.likecount,0) AS likecount
       ${distanceSelect}
@@ -252,8 +265,21 @@ function buildPopularPostQuery(options) {
       p.text,
       tag.tags,
       p.date,
-      image.images,
-      audio.audio,
+         IFNULL(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'id', m.id,
+          'url', m.url,
+          'type', m.type,
+          'thumbnailUrl', m.thumbnailurl
+        )
+      )
+      FROM media m
+      WHERE m.postid = p.postid
+    ),
+    JSON_ARRAY()
+  ) AS media,
       IFNULL(com.commentcount,0) AS commentcount,
       IFNULL(lik.likecount,0) AS likecount,
       p.score,

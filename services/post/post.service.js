@@ -34,15 +34,7 @@ const uploadPost = async(
 
         }
 
-        /**if(image) {
-            for (var i = 0; i < image.length; i++) {
-                imagearr[i] = '/image?filename=' + image[i].filename;
-                console.log(image[i].filename);
-            }
-        }
-        if(audio && audio.length>0) {
-            audioUrl = '/audio?filename=' + audio[0].filename;
-        }**/
+    
         return transaction ( async(conn)=>{
             const [postResult] = await conn.query(
           `INSERT INTO post 
@@ -72,24 +64,13 @@ const uploadPost = async(
         }
         for( const media of mediaData) {
             const { url, type } = media
+            console.log('raw type =', JSON.stringify(media.type))
             await conn.query(
                 'INSERT INTO media(postid,type,url) value (?,?,?)',
                 [postResult.insertId,type,url]
             )
         }
-        /**for(var i=0;i<imagearr.length;i++) {
-            await conn.query(
-                'INSERT INTO imagefile(postid,filename) value (?,?)',
-                    [postResult.insertId,imagearr[i]]
-                )
-        }
-        if(audioUrl) {
-             await conn.query(
-            'INSERT INTO audiofile(postid,filename) VALUES(?,?)',
-            [postResult.insertId,audioUrl]
-        )
-
-        }**/
+    
         if(voteoptions) {
             let voteoptionsArr = []
             try {

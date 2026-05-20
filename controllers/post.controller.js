@@ -26,14 +26,16 @@ const uploadPost = asyncHandler(async(req,res)=> {
     const {latitude,longitude,anonymousNick,text,tags,voteoptions} = req.body
 
     const files = req.files || []
-    const mediaTypes = req.body.mediaTypes || []
-
+    let mediaTypes = req.body.mediaTypes || []
+if (!Array.isArray(mediaTypes)) {
+    mediaTypes = [mediaTypes]
+}
     console.log("files:", req.files)
 console.log("mediaTypes:", mediaTypes)
     const mediaList = files.map((file, index) => ({
-        file,
-        type: mediaTypes[index]
-    }))
+    file,
+    type: String(mediaTypes[index]).trim().toUpperCase()
+}))
 
 
     const result = await postService.uploadPost(userId,latitude,longitude,anonymousNick,text,tags,mediaList,voteoptions)
