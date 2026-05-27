@@ -171,7 +171,7 @@ if(targetuserid) {
           'id', m.id,
           'url', m.url,
           'type', m.type,
-          'thumbnailUrl', m.thumbnailurl
+          'thumbnailurl', m.thumbnailurl
         )
       )
       FROM media m
@@ -272,7 +272,7 @@ function buildPopularPostQuery(options) {
           'id', m.id,
           'url', m.url,
           'type', m.type,
-          'thumbnailUrl', m.thumbnailurl
+          'thumbnailurl', m.thumbnailurl
         )
       )
       FROM media m

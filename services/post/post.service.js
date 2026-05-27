@@ -63,11 +63,11 @@ const uploadPost = async(
             }
         }
         for( const media of mediaData) {
-            const { url, type } = media
+            const { url, type, thumbnailUrl } = media
             console.log('raw type =', JSON.stringify(media.type))
             await conn.query(
-                'INSERT INTO media(postid,type,url) value (?,?,?)',
-                [postResult.insertId,type,url]
+                'INSERT INTO media(postid,type,url,thumbnailurl) value (?,?,?,?)',
+                [postResult.insertId,type,url, thumbnailUrl || null]
             )
         }
     

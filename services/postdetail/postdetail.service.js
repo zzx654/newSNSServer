@@ -46,7 +46,7 @@ const getPostById = async (conn, myuserId, postId, latitude, longitude) => {
           'id', m.id,
           'url', m.url,
           'type', m.type,
-          'thumbnailUrl', m.thumbnailurl
+          'thumbnailurl', m.thumbnailurl
         )
       )
       FROM media m
