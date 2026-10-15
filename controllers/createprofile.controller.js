@@ -12,7 +12,7 @@ const checkNickname = asyncHandler(async(req,res) => {
 const createProfile = asyncHandler(async(req,res) => {
     
         const imageUrl = req.file
-  ? `/profile?filename=${req.file.filename}`
+  ? `uploads/media/${req.file.filename}`
   : null
   console.log()
   const { nickname, birth, gender} = req.body

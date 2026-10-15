@@ -27,6 +27,13 @@ router.post(
   userController.getUserInfo
 )
 
+router.post(
+  '/getMedia',
+  accessToken,
+  verifyToken,
+  userController.getMedia
+)
+
 
 
 module.exports = router

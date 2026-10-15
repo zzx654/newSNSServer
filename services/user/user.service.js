@@ -1,4 +1,5 @@
 const { pool } = require("../../config/db")
+const mediaListQuery = require('./medialist.query')
 
 const notification = require('../notification/notification.service')
 const getSearchedUsers = async(myuserId,nickname,lastuserid) => {
@@ -161,4 +162,31 @@ const getUserInfo = async(myuserId,targetUserId) => {
 
 }
 
-module.exports = { getSearchedUsers, toggleFollowUser, getUserInfo }
+const getMediaList = async(targetUserId,type,mediaId,latitude,longitude) => {
+       const{ query, params } = mediaListQuery.buildMediaListQuery({
+            targetUserId:targetUserId,
+            type:type,
+            cursor:mediaId,
+            latitude:latitude,
+            longitude:longitude,
+        
+        })
+
+        console.log(targetUserId)
+      
+        const [mediaPosts] = await pool.query(
+            query,
+            params
+        )
+
+        return {
+            isTokenValid:true,
+            resultCode:200,
+            data: {
+                mediaPosts:mediaPosts
+            }
+        }
+
+}
+
+module.exports = { getSearchedUsers, toggleFollowUser, getUserInfo, getMediaList }

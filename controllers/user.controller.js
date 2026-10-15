@@ -25,4 +25,14 @@ const getUserInfo = asyncHandler(async(req,res) => {
    res.json(result)
 })
 
-module.exports = { getSearchedUsers, toggleFollowUser,getUserInfo }
+const getMedia = asyncHandler(async(req,res) => {
+  const { userid,type,mediaid,latitude,longitude } = req.body
+  
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  const result = await userService.getMediaList(userid,type,mediaid,latitude,longitude)
+
+  res.json(result)
+
+})
+
+module.exports = { getSearchedUsers, toggleFollowUser,getUserInfo,getMedia }

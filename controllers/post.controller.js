@@ -49,9 +49,21 @@ const editPost = asyncHandler(async(req,res)=> {
     const {userId} = req.user
     const {image,audio} = req.files
 
-    const {postid,text,tags,latitude,longitude,anonymousNick,deleteImages,deleteAudio} = req.body
+    const {postid,text,tags,latitude,longitude,anonymousNick,deletedVisualMedia,deletedAudio} = req.body
 
-    const result = await postService.editPost(postid,userId,latitude,longitude,anonymousNick,text,tags,image,deleteImages,audio,deleteAudio)
+        const files = req.files || []
+    let mediaTypes = req.body.mediaTypes || []
+if (!Array.isArray(mediaTypes)) {
+    mediaTypes = [mediaTypes]
+}
+    console.log("files:", req.files)
+console.log("mediaTypes:", mediaTypes)
+    const mediaList = files.map((file, index) => ({
+    file,
+    type: String(mediaTypes[index]).trim().toUpperCase()
+}))
+
+    const result = await postService.editPost(postid,userId,latitude,longitude,anonymousNick,text,tags,mediaList,deletedVisualMedia,deletedAudio)
 
     res.json(result)
 })

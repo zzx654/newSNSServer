@@ -28,11 +28,7 @@ router.post(
   '/editPost',
   accessToken,
   verifyToken,
-  fileUpload.fields([
-    { name: 'image', maxCount: 10 },  // 이미지 배열
-    { name: 'audio', maxCount: 1 },   // 오디오 1개
-
-  ]),
+  fileUpload.array('media', 10), 
   postController.editPost
 )
 router.post(

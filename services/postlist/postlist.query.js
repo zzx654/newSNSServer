@@ -1,4 +1,3 @@
-
 function buildPostListQuery(options = {}) {
   const { sort = 'latest' } = options
 
@@ -8,17 +7,21 @@ function buildPostListQuery(options = {}) {
 
   return buildNormalPostQuery(options)
 }
+
 function getCommonJoins() {
   return `
     LEFT JOIN (
       SELECT postid, COUNT(*) AS commentcount
       FROM comment
+      WHERE deleted_at IS NULL
       GROUP BY postid
     ) com ON p.postid = com.postid
 
+   
     LEFT JOIN (
       SELECT postid, COUNT(*) AS likecount
       FROM likepost
+      WHERE deleted_at IS NULL
       GROUP BY postid
     ) lik ON p.postid = lik.postid
 
@@ -46,7 +49,7 @@ function getCommonJoins() {
     LEFT JOIN (
       SELECT postid, userid AS isliked
       FROM likepost
-      WHERE userid = ?
+      WHERE userid = ? AND deleted_at IS NULL
     ) mylike ON p.postid = mylike.postid
 
     LEFT JOIN (
@@ -67,6 +70,7 @@ function getCommonJoins() {
     ) votecount ON p.postid = votecount.postid
   `
 }
+
 function buildNormalPostQuery(options) {
   const {
     myuserid,
@@ -80,8 +84,6 @@ function buildNormalPostQuery(options) {
     sort = 'latest'
   } = options
 
-
-  console.log(postdate)
   const selectParams = []
   const joinParams = [myuserid]
   const whereParams = []
@@ -115,27 +117,27 @@ function buildNormalPostQuery(options) {
     orderClause = 'ORDER BY p.date DESC, p.postid DESC'
   }
 
+  /* ---------- 삭제 안 된 게시글만 필터 (필수) ---------- */
+  const whereConditions = ['p.deleted_at IS NULL']
+
   /* ---------- 태그 필터 ---------- */
-  const whereConditions = []
+  if (tagid) {
+    whereConditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM posttag pt
+        WHERE pt.postid = p.postid
+        AND pt.tagid = ?
+      )
+    `)
+    whereParams.push(tagid)
+  }
 
-
- if (tagid) {
-  whereConditions.push(`
-    EXISTS (
-      SELECT 1
-      FROM posttag pt
-      WHERE pt.postid = p.postid
-      AND pt.tagid = ?
-    )
-  `)
-  whereParams.push(tagid)
-}
-/* ---------- 유저 필터 ---------- */
-
-if(targetuserid) {
-  whereConditions.push('p.userid = ?')
-  whereParams.push(targetuserid)
-}
+  /* ---------- 유저 필터 ---------- */
+  if (targetuserid) {
+    whereConditions.push('p.userid = ?')
+    whereParams.push(targetuserid)
+  }
 
   /* ---------- 페이징 ---------- */
   if (postid) {
@@ -145,10 +147,7 @@ if(targetuserid) {
     whereParams.push(postdate, postdate, postid)
   }
 
-  const whereClause =
-    whereConditions.length > 0
-      ? 'WHERE ' + whereConditions.join(' AND ')
-      : ''
+  const whereClause = 'WHERE ' + whereConditions.join(' AND ')
 
   const query = `
     SELECT
@@ -164,23 +163,23 @@ if(targetuserid) {
       p.text,
       tag.tags,
       p.date,
-       IFNULL(
-    (
-      SELECT JSON_ARRAYAGG(
-        JSON_OBJECT(
-          'id', m.id,
-          'url', m.url,
-          'type', m.type,
-          'thumbnailurl', m.thumbnailurl
-        )
-      )
-      FROM media m
-      WHERE m.postid = p.postid
-    ),
-    JSON_ARRAY()
-  ) AS media,
-      IFNULL(com.commentcount,0) AS commentcount,
-      IFNULL(lik.likecount,0) AS likecount
+      IFNULL(
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', m.id,
+              'url', m.url,
+              'type', m.type,
+              'thumbnailurl', m.thumbnailurl
+            )
+          )
+          FROM media m
+          WHERE m.postid = p.postid
+        ),
+        JSON_ARRAY()
+      ) AS media,
+      IFNULL(com.commentcount, 0) AS commentcount,
+      IFNULL(lik.likecount, 0) AS likecount
       ${distanceSelect}
     FROM post p
     ${getCommonJoins()}
@@ -200,6 +199,7 @@ if(targetuserid) {
     ]
   }
 }
+
 function buildPopularPostQuery(options) {
   const {
     myuserid,
@@ -211,32 +211,35 @@ function buildPopularPostQuery(options) {
   const joinParams = [myuserid]
   const whereParams = []
 
+  //  삭제 안 된 게시글만 추출 (post.deleted_at IS NULL)
   const withClause = `
     WITH post_with_popularity AS (
       SELECT
         post.*,
-        IFNULL(ps.score,0) AS score,
-        (IFNULL(ps.score,0) /
+        IFNULL(ps.score, 0) AS score,
+        (IFNULL(ps.score, 0) /
           POWER(TIMESTAMPDIFF(HOUR, post.date, NOW()) + 2, 1.5)
         ) AS popularityScore
       FROM post
       LEFT JOIN post_scores ps ON post.postid = ps.postid
+      WHERE post.deleted_at IS NULL
     )
   `
 
-  const whereConditions = []
+  /* ---------- 삭제 안 된 게시글만 필터  ---------- */
+  const whereConditions = ['p.deleted_at IS NULL']
 
- if (tagid) {
-  whereConditions.push(`
-    EXISTS (
-      SELECT 1
-      FROM posttag pt
-      WHERE pt.postid = p.postid
-      AND pt.tagid = ?
-    )
-  `)
-  whereParams.push(tagid)
-}
+  if (tagid) {
+    whereConditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM posttag pt
+        WHERE pt.postid = p.postid
+        AND pt.tagid = ?
+      )
+    `)
+    whereParams.push(tagid)
+  }
 
   if (postid && score !== undefined) {
     whereConditions.push(
@@ -245,10 +248,7 @@ function buildPopularPostQuery(options) {
     whereParams.push(score, score, postid)
   }
 
-  const whereClause =
-    whereConditions.length > 0
-      ? 'WHERE ' + whereConditions.join(' AND ')
-      : ''
+  const whereClause = 'WHERE ' + whereConditions.join(' AND ')
 
   const query = `
     ${withClause}
@@ -265,23 +265,23 @@ function buildPopularPostQuery(options) {
       p.text,
       tag.tags,
       p.date,
-         IFNULL(
-    (
-      SELECT JSON_ARRAYAGG(
-        JSON_OBJECT(
-          'id', m.id,
-          'url', m.url,
-          'type', m.type,
-          'thumbnailurl', m.thumbnailurl
-        )
-      )
-      FROM media m
-      WHERE m.postid = p.postid
-    ),
-    JSON_ARRAY()
-  ) AS media,
-      IFNULL(com.commentcount,0) AS commentcount,
-      IFNULL(lik.likecount,0) AS likecount,
+      IFNULL(
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', m.id,
+              'url', m.url,
+              'type', m.type,
+              'thumbnailurl', m.thumbnailurl
+            )
+          )
+          FROM media m
+          WHERE m.postid = p.postid
+        ),
+        JSON_ARRAY()
+      ) AS media,
+      IFNULL(com.commentcount, 0) AS commentcount,
+      IFNULL(lik.likecount, 0) AS likecount,
       p.score,
       p.popularityScore
     FROM post_with_popularity p
@@ -300,4 +300,4 @@ function buildPopularPostQuery(options) {
   }
 }
 
-module.exports = { buildPostListQuery,getCommonJoins }
+module.exports = { buildPostListQuery, getCommonJoins }

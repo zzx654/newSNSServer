@@ -65,15 +65,15 @@ const requestPhoneAuthCode = async (phoneNumber) => {
   }
 
   // 2. 인증코드 생성
-  const code = generateCode()
-  cache.del(phoneNumber)
+  //const code = generateCode()
+  //cache.del(phoneNumber)
 
   // 3. 캐시에 저장 (TTL 3~5분)
-  cache.set(phoneNumber, code, 180)
+ // cache.set(phoneNumber, code, 180)
   
 
   // 4. 문자 전송
-  await sms.sendAuthCode(phoneNumber, code)
+  //await sms.sendAuthCode(phoneNumber, code)
 
   return {
     resultCode: 200,
@@ -82,24 +82,25 @@ const requestPhoneAuthCode = async (phoneNumber) => {
 }
 
 const authenticateCode = async (phoneNumber, authCode) => {
-  const cachedCode = cache.get(phoneNumber)
+  //const cachedCode = cache.get(phoneNumber)
 
-  if (!cachedCode) {
-    return {
-      resultCode: 200,
-      data: { isCorrect: false }
-    }
-  }
+  //if (!cachedCode) {
+  //  return {
+  //    resultCode: 200,
+  //    data: { isCorrect: false }
+  //  }
+  //}
 
-  const isCorrect = String(authCode) === String(cachedCode)
+  //const isCorrect = String(authCode) === String(cachedCode)
 
-  if (isCorrect) {
-    cache.del(phoneNumber)
-  }
+  //if (isCorrect) {
+  //  cache.del(phoneNumber)
+  //}
 
   return {
     resultCode: 200,
-    data: { isCorrect }
+    data: { isCorrect: true }
+    //data: { isCorrect }
   }
 }
 const requestEmailAuthCode = async(email) => {

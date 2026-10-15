@@ -17,6 +17,12 @@ router.post(
 
 )
 router.post(
+  '/getUnreadNotificationCount',
+  accessToken,
+  verifyToken,
+  notificationController.getUnreadNotificationCount
+)
+router.post(
     '/readAllNotifications',
       accessToken,
   verifyToken,

@@ -5,6 +5,8 @@ const postlistController = require('../../controllers/postlist.controller')
 
 router.post('/getNewPosts',accessToken,verifyToken,postlistController.getNewPosts)
 
+router.post('/getNearPosts',accessToken,verifyToken,postlistController.getNearPosts)
+
 router.post('/getNewTagPosts',accessToken,verifyToken,postlistController.getNewTagPosts)
 
 router.post('/getPopularTagPosts',accessToken,verifyToken,postlistController.getPopularTagPosts)

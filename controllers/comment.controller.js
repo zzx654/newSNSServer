@@ -8,6 +8,7 @@ const getComments = asyncHandler(async(req,res)=> {
 
 
     const result = await commentlistService.getComments(userId,postid,commentid,commentdate)
+    await new Promise(resolve => setTimeout(resolve, 2000))
 
     res.json(result)
 
@@ -60,7 +61,7 @@ const getSelectedComment = asyncHandler(async(req,res) => {
     const { commentid }  = req.body
 
     const result = await commentlistService.getSelectedComment(userId,commentid)
-
+     await new Promise(resolve => setTimeout(resolve, 2000))
     res.json(result)
 })
 
@@ -70,7 +71,7 @@ const getReplies = asyncHandler(async(req,res) => {
     const { ref,commentid,commentdate} = req.body
 
     const result = await commentlistService.getReplies(userId,ref,commentid,commentdate)
-
+await new Promise(resolve => setTimeout(resolve, 2000))
     res.json(result)
 })
 

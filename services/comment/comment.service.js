@@ -44,11 +44,11 @@ async function getPostContext(postId, userId) {
 async function getCommentWithUser(conn, commentId, postId, userId) {
   const [rows] = await conn.query(
     `SELECT
-      c.commentid,c.postid,c.userid,c.text,c.date,c.ref,c.anonymous,
+      c.commentid,c.postid,c.userid,c.text,c.date,c.depth,c.ref,c.anonymous,
       u.nickname,u.profileimage,u.gender
      FROM comment c
      JOIN user u ON c.userid = u.userid
-     WHERE c.commentid=? AND c.postid=? AND c.userid=?`,
+     WHERE c.commentid=? AND c.postid=? AND c.userid=? AND c.deleted_at IS NULL`,
     [commentId, postId, userId]
   )
 
@@ -82,11 +82,15 @@ const getComments = async(myuserId,postid,commentid,commentdate) => {
 
 
 const getReplies = async(myuserId,ref,commentid,commentdate) => {
-
+const whereParams = []
+   
     let whereClause = ''
-    if(commentid&&commentdate) {
-      whereClause = ('(com.date>? OR (com.date=? AND com.commentid>?))')
+   if (commentid && commentdate) {
+
+    whereClause = ' AND (com.date > ? OR (com.date = ? AND com.commentid > ?))'
+   whereParams.push(commentdate, commentdate, commentid)
     }
+
     const query = `SELECT
         com.commentid,
         com.postid,
@@ -108,11 +112,11 @@ const getReplies = async(myuserId,ref,commentid,commentdate) => {
         ON com.commentid = mylik.commentid
         LEFT OUTER JOIN user getuser
         ON com.userid = getuser.userid
-        WHERE com.depth = 1 AND ref = ?
+        WHERE com.depth = 1 AND ref = ? AND com.deleted_at IS NULL
         ${whereClause}
         ORDER BY com.date asc,com.commentid ASC LIMIT 20
     `
-    const [replyRows] = await pool.query(query,[myuserId,ref])
+    const [replyRows] = await pool.query(query,[myuserId,ref,...whereParams])
 
     return {
       isTokenValid:true,
@@ -176,6 +180,7 @@ const getNotificationComment = async(myuserId,commentid) => {
         WHERE
         com.ref=(select ref from comment WHERE commentid = ?)
         AND (com.commentid=? or com.depth=0)
+        AND com.deleted_at IS NULL
         ORDER BY com.depth ASC
 
   `
@@ -276,61 +281,109 @@ await conn.query(
   })
 }
 
-const toggleLikeComment = async(myuserId,commentid) => {
-   const [myuserRows] = await pool.query('SELECT * FROM user WHERE userid=?', [myuserId])
-   const [commentRows] = await pool.query(
-    'SELECT *FROM comment WHERE commentid = ?',
-    [commentid]
-   )
-   const [commentuserRows] = await pool.query(
-    'SELECT *FROM user WHERE userid = (SELECT userid FROM comment WHERE commentid = ?)',
-    [commentid]
-   )
+const deleteComment = async (commentid) => {
+  return transaction(async (conn) => {
+  
+    await conn.query(
+      'UPDATE comment SET deleted_at = NOW() WHERE ref = ? AND deleted_at IS NULL',
+      [commentid] 
+    );
 
-   try {
-    await pool.query(
-      'INSERT INTO likecomment (commentid,userid) VALUES (?, ?)',
-      [commentid,myuserId]
-    )
-    if(myuserId!=commentuserRows[0].userid) {
+    return {
+      isTokenValid: true,
+      resultCode: 200
+    };
+  });
+};
+
+const deleteReply = async (commentid) => {
+  return transaction(async (conn) => {
+
+    await conn.query(
+      'UPDATE comment SET deleted_at = NOW() WHERE commentid = ? AND deleted_at IS NULL',
+      [commentid] 
+    );
+
+    return {
+      isTokenValid: true,
+      resultCode: 200
+    };
+  });
+};
+
+const toggleLikeComment = async (myuserId, commentid) => {
+  const [myuserRows] = await pool.query('SELECT * FROM user WHERE userid=?', [myuserId]);
+  const [commentRows] = await pool.query('SELECT * FROM comment WHERE commentid = ?', [commentid]);
+  const [commentuserRows] = await pool.query(
+    'SELECT * FROM user WHERE userid = (SELECT userid FROM comment WHERE commentid = ?)',
+    [commentid]
+  );
+
+  try {
+    //  기존 좋아요 기록 조회 
+    const [[existingLike]] = await pool.query(
+      'SELECT * FROM likecomment WHERE commentid = ? AND userid = ?',
+      [commentid, myuserId]
+    );
+
+    //  기존 기록이 있고, 현재 '좋아요' 상태인 경우 -> [좋아요 취소 (소프트 삭제)]
+    if (existingLike && existingLike.deleted_at === null) {
+      await pool.query(
+        'UPDATE likecomment SET deleted_at = NOW() WHERE commentid = ? AND userid = ?',
+        [commentid, myuserId]
+      );
+
+      return {
+        resultCode: 200,
+        isTokenValid: true,
+        data: { isLiked: false }
+      };
+    }
+
+
+    if (existingLike) {
+      // 이전에 취소했던 기록이 있으면 NULL로 복구 및 date(또나 created_at) 갱신
+      await pool.query(
+        'UPDATE likecomment SET deleted_at = NULL, date = NOW() WHERE commentid = ? AND userid = ?',
+        [commentid, myuserId]
+      );
+    } else {
+      // 아예 처음 누른 거면 신규 INSERT
+      await pool.query(
+        'INSERT INTO likecomment (commentid, userid, date, deleted_at) VALUES (?, ?, NOW(), NULL)',
+        [commentid, myuserId]
+      );
+    }
+
+    // 알림 보낼 조건 체크 (자신의 댓글이 아닐 때만)
+    if (myuserId !== commentuserRows[0]?.userid) {
       const canCreate = await canCreateNotification(
+        'LIKECOMMENT',
+        myuserId,
+        commentuserRows[0].userid,
+        { postId: commentRows[0].postid, commentId: commentid }
+      );
+      if (canCreate) {
+        createNotification(
+          myuserRows[0],
+          commentuserRows[0],
+          null,
           'LIKECOMMENT',
-          myuserId,
-          commentuserRows[0].userid,
-          { postId: commentRows[0].postid,commentId:commentid }
-        )
-      if(canCreate) {
-        createNotification(myuserRows[0],commentuserRows[0],null,'LIKECOMMENT',commentRows[0].text,{postId:commentRows[0].postid,commentId:commentid})
+          commentRows[0].text,
+          { postId: commentRows[0].postid, commentId: commentid }
+        );
       }
     }
-      return {
-            resultCode:200,
-            isTokenValid:true,
-            data: {
-              isLiked:true
-            }
-          }
 
+    return {
+      resultCode: 200,
+      isTokenValid: true,
+      data: { isLiked: true }
+    };
 
-   }catch(err) {
-    if(err.code === 'ER_DUP_ENTRY') {
-          await pool.query(
-                  'DELETE FROM likecomment WHERE userid = ? AND commentid = ?',
-                  [myuserId,commentid]
-              )
-               return {
-            resultCode:200,
-            isTokenValid:true,
-            data: {
-              isLiked:false
-            }
-          }
-    }
-    else {
-      throw err
-    }
-
-   }
+  } catch (err) {
+    throw err;
+  }
 }
 const getSelectedComment = async(myuserId,commentid) => {
 
@@ -365,4 +418,5 @@ const getSelectedComment = async(myuserId,commentid) => {
 
 
 
-module.exports = { getComments, getPopularComments, getNotificationComment, postComment, toggleLikeComment, getSelectedComment, getReplies, postReply }
+module.exports = { getComments, getPopularComments, getNotificationComment, postComment, toggleLikeComment, 
+  getSelectedComment, getReplies, postReply, deleteComment, deleteReply }

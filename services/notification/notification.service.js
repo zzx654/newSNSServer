@@ -179,30 +179,61 @@ async function canCreateNotification(type, senderId, receiverId, extraJson) {
   return rows.length === 0;
 }
 
-const getNotifications = async(myuserId,notificationid,notificationdate) => {
+const getNotifications = async (myuserId, notificationid, notificationdate) => {
+  let query = '';
+  const params = [];
 
-  let query = 'SELECT *FROM notification WHERE receiverid = ? ORDER BY date DESC,id DESC LIMIT 15'
-
-  const params = [myuserId]
-  if(notificationid&&notificationdate) {
-    query = 'SELECT *FROM (SELECT *FROM notification WHERE receiverid = ?)notis WHERE(date<? OR (date = ? AND id<?)) ORDER BY date DESC LIMIT 15'
-    params.push(myuserId,notificationdate,notificationdate,notificationid)
+  if (notificationid && notificationdate) {
+    // 💡 2페이지 이후: 커서(date, id) 기준 다음 20개 조회
+    query = `
+      SELECT * 
+      FROM notification 
+      WHERE receiverid = ? 
+        AND (date < ? OR (date = ? AND id < ?)) 
+      ORDER BY date DESC, id DESC 
+      LIMIT 20
+    `;
+    params.push(myuserId, notificationdate, notificationdate, notificationid);
+  } else {
+    // 💡 1페이지: 최신 20개 조회
+    query = `
+      SELECT * 
+      FROM notification 
+      WHERE receiverid = ? 
+      ORDER BY date DESC, id DESC 
+      LIMIT 20
+    `;
+    params.push(myuserId);
   }
+
+  // unreadCount 카운트 쿼리
+  const [unread] = await pool.query(
+    'SELECT COUNT(*) as unreadCount FROM notification WHERE receiverid = ? AND isread = 0',
+    [myuserId]
+  );
+
+  const [notificationRows] = await pool.query(query, params);
+
+  return {
+    isTokenValid: true,
+    resultCode: 200,
+    data: {
+      notifications: notificationRows,
+      unreadCount: unread[0].unreadCount
+    }
+  };
+};
+const getUnreadNotificationCount = async(myuserId) => {
   const [unread] = await pool.query('SELECT COUNT(*) as unreadCount FROM notification WHERE receiverid=? AND isread = 0',
     [myuserId]
   )
-
-  const [notificationRows] = await pool.query(query,params)
-
   return {
     isTokenValid: true,
     resultCode:200,
     data: {
-      notifications:notificationRows,
-      unreadCount:unread[0].unreadCount
+      unReadCount:unread[0].unreadCount
     }
   }
-
 }
 
 const readNotification = async (myuserId, notificationid) => {
@@ -268,39 +299,41 @@ if (typeof extra === "string") {
 }
 
 const readAllNotifications = async(myuserId) => {
-      await pool.query('UPDATE notification SET isread=1 where receiverid=?',[myuserId])
+  try {
+         await pool.query('UPDATE notification SET isread=1 where receiverid=?',[myuserId])
         
  
-      const [getNotificationsResult] = await pool.query('select *from notification where receiverid=?',[myuserId])
-      const unreadCount = await getUnreadCount(myuserId)
+      //const [getNotificationsResult] = await pool.query('select *from notification where receiverid=?',[myuserId])
+      //const unreadCount = await getUnreadCount(myuserId)
     return {
       isTokenValid:true,
-      resultCode:200,
-      data : {
-         notifications: getNotificationsResult,
-      unreadCount:unreadCount
-
-      }
-     
+      resultCode:200
+    
     }
+
+  }catch(err) {
+    throw(err)
+  }
+ 
 
 }
 
 const deleteNotifications = async(myuserId) => {
-  await pool.query("DELETE FROM notification where receiverid=?",[myuserId])
+  try {
+      await pool.query("DELETE FROM notification where receiverid=?",[myuserId])
 
-      const [getNotificationsResult] = await pool.query('select *from notification where receiverid=?',[myuserId])
-      const unreadCount = await getUnreadCount(myuserId)
+      //const [getNotificationsResult] = await pool.query('select *from notification where receiverid=?',[myuserId])
+      //const unreadCount = await getUnreadCount(myuserId)
     return {
            isTokenValid:true,
-      resultCode:200,
-      data: {
-              notifications: getNotificationsResult,
-      unreadCount:unreadCount
-
-      }
+      resultCode:200
 
     }
+
+  } catch(err) {
+    throw(err)
+  }
+
 
 
 
@@ -311,6 +344,7 @@ module.exports = {
   createNotification,
   canCreateNotification,
   getNotifications,
+  getUnreadNotificationCount,
   readNotification,
   readAllNotifications,
   deleteNotifications

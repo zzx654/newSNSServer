@@ -59,7 +59,7 @@ const getPostById = async (conn, myuserId, postId, latitude, longitude) => {
       ${distanceSelect}
     FROM post p
     ${postlistQuery.getCommonJoins()}
-    WHERE p.postid = ?
+    WHERE p.postid = ? AND p.deleted_at IS NULL
   `
 
   const [posts] = await conn.query(query, params)
@@ -76,6 +76,8 @@ const getPostDetail = async (myuserId, postId, latitude, longitude) => {
       message: 'Post not found'
     }
   }
+  console.log('????')
+  console.log(posts)
 
   return {
     resultCode: 200,
@@ -222,73 +224,84 @@ const cancelVote = async(myuserId,postId) => {
 
 }
 
-const toggleLikePost = async(myuserId,postId) => {
+const toggleLikePost = async (myuserId, postId) => {
+  //  대상 게시글 및 유저 정보 조회
+  const [postRows] = await pool.query('SELECT * FROM post WHERE postid = ?', [postId]);
+  const post = postRows[0];
 
-const [postRows] = await pool.query('SELECT * FROM post WHERE postid=?', [postId]);
-const post = postRows[0];
+  if (!post) {
+    throw new Error('게시글을 찾을 수 없습니다.');
+  }
 
-const [postUserRows] = await pool.query('SELECT * FROM user WHERE userid=?', [post.userid]);
-const postUser = postUserRows[0];
+  const [postUserRows] = await pool.query('SELECT * FROM user WHERE userid = ?', [post.userid]);
+  const postUser = postUserRows[0];
 
-const [myuserRows] = await pool.query('SELECT * FROM user WHERE userid=?', [myuserId]);
-const myuser = myuserRows[0];
+  const [myuserRows] = await pool.query('SELECT * FROM user WHERE userid = ?', [myuserId]);
+  const myuser = myuserRows[0];
 
-     try {
-          await pool.query(
-              'INSERT INTO likepost (userid,postid) VALUES (?, ?)',
-              [myuserId,postId]
-          )
-          if(myuserId!=postUser.userid) {
-      
-          const canCreate = await notification.canCreateNotification(
-  'LIKEPOST',
-  myuserId,
-  postUser.userid,
-  { postId: postId }
-);
-
-if (canCreate) {
-  await notification.createNotification(
-    myuser,
-    postUser,
-    null,
-    'LIKEPOST',
-    null,
-    { postId: postId }
+  //  기존 좋아요 이력 조회 (소프트 삭제된 것 포함)
+  const [existingLikes] = await pool.query(
+    'SELECT * FROM likepost WHERE userid = ? AND postid = ?',
+    [myuserId, postId]
   );
-}
-          }
-        
-          return {
-            resultCode:200,
-            isTokenValid:true,
-            data: {
-              isLiked:true
-            }
-          }
-  
-      } catch (err) {
-          if(err.code === 'ER_DUP_ENTRY') {
-              await pool.query(
-                  'DELETE FROM likepost WHERE userid = ? AND postid = ?',
-                  [myuserId,postId]
-              )
-               return {
-            resultCode:200,
-            isTokenValid:true,
-            data: {
-              isLiked:false
-            }
-          }
-  
-          }else {
-              throw err
-          }
-  
-      }
+  const existingLike = existingLikes[0];
 
+  let isLiked = false;
 
-}
+  if (existingLike) {
+    if (existingLike.deleted_at === null) {
+      // 이미 좋아요 상태 ➔ 좋아요 취소 (소프트 삭제)
+      await pool.query(
+        'UPDATE likepost SET deleted_at = NOW() WHERE userid = ? AND postid = ?',
+        [myuserId, postId]
+      );
+      isLiked = false;
+    } else {
+      //  소프트 삭제된 상태 ➔ 좋아요 재등록 (복구)
+      await pool.query(
+        'UPDATE likepost SET deleted_at = NULL, date = NOW() WHERE userid = ? AND postid = ?',
+        [myuserId, postId]
+      );
+      isLiked = true;
+    }
+  } else {
+    // 신규 좋아요 INSERT
+    await pool.query(
+      'INSERT INTO likepost (userid, postid, date, deleted_at) VALUES (?, ?, NOW(), NULL)',
+      [myuserId, postId]
+    );
+    isLiked = true;
+  }
+
+ 
+  if (isLiked && myuserId !== postUser.userid) {
+    const canCreate = await notification.canCreateNotification(
+      'LIKEPOST',
+      myuserId,
+      postUser.userid,
+      { postId: postId }
+    );
+
+    if (canCreate) {
+      await notification.createNotification(
+        myuser,
+        postUser,
+        null,
+        'LIKEPOST',
+        null,
+        { postId: postId }
+      );
+    }
+  }
+
+  return {
+    resultCode: 200,
+    isTokenValid: true,
+    data: {
+      isLiked
+    }
+  };
+};
 
 const deletePost = async(myuserId,postid) => {
 
@@ -297,10 +310,14 @@ const deletePost = async(myuserId,postid) => {
       'SELECT userid FROM post WHERE postid = ? and userid=?',
       [postid,myuserId]
     )
+   
       
     if (!postRows) throw new Error('Post not found')
       
-    await conn.query('DELETE FROM post where postid=? and userid=?',[postid,myuserId])
+     await conn.query(
+      'UPDATE post SET deleted_at = NOW() WHERE postid=? AND userid=? AND deleted_at IS NULL',
+      [postid,myuserId] 
+    );
 
     return {
       resultCode:200,

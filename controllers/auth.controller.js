@@ -11,6 +11,7 @@ const requestPhoneAuthCode = asyncHandler (async(req, res) => {
   
   const {phoneNumber} = req.body
     const result = await authService.requestPhoneAuthCode(phoneNumber)
+    await new Promise(resolve => setTimeout(resolve, 2000))
     res.json(result)
  
 })

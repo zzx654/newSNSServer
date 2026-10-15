@@ -12,6 +12,7 @@ function getCommonJoins() {
     LEFT JOIN likecomment mylik
       ON com.commentid = mylik.commentid
       AND mylik.userid = ?
+      AND mylik.deleted_at IS NULL
 
     LEFT JOIN user getuser
       ON com.userid = getuser.userid
@@ -57,7 +58,7 @@ function buildNormalCommentQuery(options) {
         getuser.gender,
         (mylik.userid IS NOT NULL) AS commentliked
      FROM
-     (SELECT *FROM comment WHERE depth = 0 AND postid = ?) com
+     (SELECT * FROM comment WHERE depth = 0 AND postid = ? AND deleted_at IS NULL) com
      ${getCommonJoins()}
      ${whereClause}
      ORDER BY com.date ASC, com.commentid ASC LIMIT 20
@@ -111,7 +112,7 @@ function buildPopularCommentQuery(options) {
         getuser.gender,
         (mylik.userid IS NOT NULL) AS commentliked
      FROM
-     (SELECT *FROM comment WHERE depth = 0 AND postid = ?) com
+     (SELECT * FROM comment WHERE depth = 0 AND postid = ? AND deleted_at IS NULL) com
      ${getCommonJoins()}
      ${whereClause}
      ORDER BY cs.score DESC, com.commentid DESC LIMIT 20

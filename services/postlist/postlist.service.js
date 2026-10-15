@@ -1,7 +1,34 @@
 const { pool } = require('../../config/db')
 const postListQuery = require('./postlist.query')
 
+const getNearPosts = async (userId,postid,postdate,distance,latitude,longitude) => {
 
+  const { query, params } = postListQuery.buildPostListQuery(
+    {
+        myuserid:userId,
+        latitude:latitude,
+        longitude:longitude,
+        distance:distance,
+        postid:postid,
+        postdate:postdate
+    }
+  )
+
+       const [posts] = await pool.query(
+    query,
+    params
+  )
+    console.log(posts)
+
+  return {
+    isTokenValid:true,
+    resultCode:200,
+    data: {
+        posts:posts
+    }
+  }
+
+}
 
 const getNewPosts = async (userId,postid,postdate,latitude,longitude) => {
 
@@ -113,4 +140,4 @@ const getUserPosts = async (myUserId,targetUserId,postid,postdate,latitude,longi
 
 }
 
-module.exports = { getNewPosts, getNewTagPosts,  getPopularTagPosts, getUserPosts }
+module.exports = { getNewPosts,getNearPosts, getNewTagPosts,  getPopularTagPosts, getUserPosts }

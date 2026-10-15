@@ -12,6 +12,13 @@ const getNotifications = asyncHandler(async (req, res) => {
 
     return res.json(result)
 })
+const getUnreadNotificationCount = asyncHandler(async(req,res) => {
+    const { userId } = req.user
+    
+    const result = await notificationService.getUnreadNotificationCount(userId)
+
+    return res.json(result)
+})
 
 const readNotification = asyncHandler(async (req,res) => {
 
@@ -41,4 +48,4 @@ const deleteNotifications = asyncHandler(async(req,res) => {
     return res.json(result)
 })
 
-module.exports = { getNotifications, readNotification, readAllNotifications, deleteNotifications }
+module.exports = { getNotifications, readNotification, readAllNotifications, deleteNotifications, getUnreadNotificationCount }
