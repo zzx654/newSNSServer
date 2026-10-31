@@ -64,6 +64,81 @@ async function checkCommentExists(commentId) {
   )
   return rows.length > 0
 }
+async function createRequestChatNotification(
+    chatRequestId,
+    requesterUserId,
+    targetUserId,
+    postId,
+    commentId
+) {
+    let title = '';
+    let content = '';
+    let extraJson = {}
+    let requesterNickname = '';
+    let requesterGender = '';
+    let requesterProfileImage = '';
+
+    // 타겟 유저(받는 사람) 정보 먼저 조회 (FCM 토큰 필요)
+    const [targetUserRows] = await pool.query(
+        'SELECT * FROM user WHERE userid = ?',
+        [targetUserId]
+    );
+    const receiver = targetUserRows[0];
+    if (!receiver) return; // 유저가 없으면 중단
+
+    // 게시물 또는 댓글 출처인 경우 (익명 요청)
+    if (commentId !== null) {
+        title = "나의 댓글로부터 채팅 요청";
+        extraJson = { postId: postId, commentId: commentId };
+
+        const [rows] = await pool.query('SELECT * FROM comment WHERE commentid=?', [commentId]);
+        if (rows.length > 0) content = rows[0].text;
+
+    } else if (postId !== null) {
+        title = "나의 게시글로부터 채팅 요청";
+        extraJson = { postId: postId };
+
+        const [rows] = await pool.query('SELECT * FROM post WHERE postid=?', [postId]);
+        if (rows.length > 0) content = rows[0].text;
+
+    } else {
+        // 유저 검색을 통한 요청인 경우 (공개 요청)
+        const [requesterUserRows] = await pool.query(
+            'SELECT * FROM user WHERE userid=?',
+            [requesterUserId]
+        );
+        const requester = requesterUserRows[0];
+        
+        if (requester) {
+            title = `${requester.nickname}님의 채팅 요청`;
+            requesterNickname = requester.nickname;
+            requesterGender = requester.gender;
+            requesterProfileImage = requester.profileimage;
+        }
+        extraJson = { userId: requesterUserId };
+        content = "대화를 나누고 싶어요~";
+    }
+
+    // FCM 메시지 구성 및 전송
+    const shortContent = shortenMultiline(content);
+    const message = {
+        token: receiver.fcmtoken,
+        data: {
+            chatRequestId: String(chatRequestId),
+            content: title + `\n“${shortContent}”`,
+            requesterNickname: String(requesterNickname),
+            requesterGender: String(requesterGender),
+            requesterProfileImage: String(requesterProfileImage),
+            extraJson: JSON.stringify(extraJson),
+            title: String(title),
+            body: `"${shortContent}"`
+        }
+    };
+
+    sendFCM(message).catch(err => {
+        console.log("FCM error:", err.code);
+    });
+}
 async function createNotification(
   sender,
   receiver,
@@ -137,13 +212,7 @@ const notification = rows[0];
 sendFCM(message).catch(err => {
   console.log("FCM error:", err.code)
 })
-  /**try {
-    sendFCM(message)
 
-  } catch(err) {
-    console.log(err)
-
-  }**/
   
 }
 
@@ -184,7 +253,7 @@ const getNotifications = async (myuserId, notificationid, notificationdate) => {
   const params = [];
 
   if (notificationid && notificationdate) {
-    // 💡 2페이지 이후: 커서(date, id) 기준 다음 20개 조회
+    // 2페이지 이후: 커서(date, id) 기준 다음 20개 조회
     query = `
       SELECT * 
       FROM notification 
@@ -195,7 +264,7 @@ const getNotifications = async (myuserId, notificationid, notificationdate) => {
     `;
     params.push(myuserId, notificationdate, notificationdate, notificationid);
   } else {
-    // 💡 1페이지: 최신 20개 조회
+    // 1페이지: 최신 20개 조회
     query = `
       SELECT * 
       FROM notification 
@@ -342,6 +411,7 @@ const deleteNotifications = async(myuserId) => {
 
 module.exports = {
   createNotification,
+  createRequestChatNotification,
   canCreateNotification,
   getNotifications,
   getUnreadNotificationCount,
