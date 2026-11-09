@@ -16,5 +16,11 @@ router.post(
     verifyToken,
     chatController.createChatRequest
 )
+router.post(
+  '/getChatRequests',
+  accessToken,
+  verifyToken,
+  chatController.getChatRequests
+)
 
 module.exports = router

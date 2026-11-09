@@ -16,4 +16,17 @@ const createChatRequest = asyncHandler(async(req,res) => {
      res.json(result)
 })
 
-module.exports = { createChatRequest }
+const getChatRequests = asyncHandler(async(req,res) => {
+    const { userId } = req.user
+    const { chatrequestid,chatrequestdate } = req.body
+
+    const result = chatService.getChatRequests(
+        myUserId = userId,
+        requestId = chatrequestid,
+        requestDate = chatrequestdate
+    )
+
+    res.json(result)
+})
+
+module.exports = { createChatRequest, getChatRequests }

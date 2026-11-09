@@ -10,10 +10,7 @@ const createChatRequest = async(requesterId,targetId,postId,commentId = null) =>
         if(requesterId === targetId) {
             return {
                 isTokenValid:true,
-                resultCode:200,
-                data: {
-                    success:false
-                }
+                resultCode:500
             }
         }
        let duplicateCheckQuery = `
@@ -41,10 +38,7 @@ const createChatRequest = async(requesterId,targetId,postId,commentId = null) =>
         if(existing.length > 0) {
              return {
                 isTokenValid:true,
-                resultCode:200,
-                data: {
-                    success:false
-                }
+                resultCode:200
             }
         }
         const insertQuery = `
@@ -53,15 +47,75 @@ const createChatRequest = async(requesterId,targetId,postId,commentId = null) =>
         `;
         const [insertResult] = await conn.query(insertQuery, [requesterId, targetId, postId, commentId]);
 
-        createRequestChatNotification(insertResult.insertId,requesterId,targetId,postId,commentId)
+         const [rows] = await conn.query(
+            `SELECT *
+            FROM chat_requests
+            WHERE id = ?`,
+            [insertResult.insertId]
+        );
+
+        const chatRequest = rows[0];
+        createRequestChatNotification(chatRequest.id,chatRequest.requesterid,chatRequest.targetid,postId,commentId,chatRequest.created_at)
 
          return {
              isTokenValid:true,
-             resultCode:200,
-             data: { success:true }
+             resultCode:200
          }
        
     })
     
 }
-module.exports = { createChatRequest }
+
+const getChatRequests = async (myUserId, requestId = null, requestDate = null) => {
+    let query = `
+        SELECT 
+            cr.id AS chatrequestid,
+            cr.requesterid,
+            cr.targetid,
+            cr.postid,
+            cr.commentid,
+            cr.status,
+            cr.created_at AS createdat,
+            
+            -- 보낸 사람 정보 (유저 검색 요청일 때 사용)
+            u.nickname AS requesternickname,
+            u.profileimage AS requesterprofileimage,
+            u.gender AS requestergender,
+            
+            -- 게시글 내용 (게시글 요청일 때 사용)
+            p.text AS postcontent,
+            
+            -- 댓글 내용 (댓글 요청일 때 사용)
+            c.text AS commentcontent
+
+        FROM chat_requests cr
+        JOIN user u ON cr.requesterid = u.userid
+        LEFT JOIN post p ON cr.postid = p.postid
+        LEFT JOIN comment c ON cr.commentid = c.commentid
+
+        WHERE cr.targetid = ?
+        AND cr.status = 'PENDING'
+    `;
+
+    const params = [myUserId];
+
+    // 커서 페이징 조건 추가 (2페이지 이후부터 작동)
+    if (requestId && requestDate) {
+        query += ` AND (cr.created_at < ? OR (cr.created_at = ? AND cr.id < ?))`;
+        params.push(requestDate, requestDate, requestId);
+    }
+
+    query += ` ORDER BY cr.created_at DESC, cr.id DESC LIMIT 20;`;
+
+    // DB 조회 실행
+    const [requests] = await pool.query(query, params);
+
+    return {
+        isTokenValid: true,
+        resultCode: 200,
+        data: {
+            chatRequests: requests
+        }
+    };
+};
+module.exports = { createChatRequest, getChatRequests }

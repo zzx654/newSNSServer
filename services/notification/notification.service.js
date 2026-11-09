@@ -69,7 +69,8 @@ async function createRequestChatNotification(
     requesterUserId,
     targetUserId,
     postId,
-    commentId
+    commentId,
+    date
 ) {
     let title = '';
     let content = '';
@@ -121,11 +122,14 @@ async function createRequestChatNotification(
 
     // FCM 메시지 구성 및 전송
     const shortContent = shortenMultiline(content);
+
+  
     const message = {
         token: receiver.fcmtoken,
         data: {
             chatRequestId: String(chatRequestId),
             content: title + `\n“${shortContent}”`,
+            date: String(date),
             requesterNickname: String(requesterNickname),
             requesterGender: String(requesterGender),
             requesterProfileImage: String(requesterProfileImage),
